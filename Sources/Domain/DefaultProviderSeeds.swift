@@ -25,6 +25,7 @@ enum DefaultProviderSeeds {
             deepSeek,
             zhipuCodingPlan,
             fireworks,
+            sambaNova,
             gemini,
             vertexAI,
         ]
@@ -205,6 +206,17 @@ enum DefaultProviderSeeds {
             iconID: LobeProviderIconCatalog.defaultIconID(for: .fireworks),
             baseURL: ProviderType.fireworks.defaultBaseURL,
             models: ModelCatalog.seededModels(for: .fireworks)
+        )
+    }
+
+    static var sambaNova: ProviderConfig {
+        ProviderConfig(
+            id: "sambanova",
+            name: "SambaNova",
+            type: .sambanova,
+            iconID: LobeProviderIconCatalog.defaultIconID(for: .sambanova),
+            baseURL: ProviderType.sambanova.defaultBaseURL,
+            models: ModelCatalog.seededModels(for: .sambanova)
         )
     }
 

@@ -90,6 +90,9 @@ enum ModelSettingsResolver {
         if providerType == .fireworks {
             return !isFireworksMiniMaxM2FamilyModel(modelID)
         }
+        if providerType == .sambanova {
+            return !isSambaNovaAlwaysOnReasoningModel(modelID)
+        }
         return true
     }
 
@@ -122,6 +125,18 @@ enum ModelSettingsResolver {
             return fallback
         }
         return entry.reasoningConfig
+    }
+
+    /// Exact-ID allowlist for SambaNova models where reasoning cannot be disabled.
+    /// Keep this strict to avoid misclassifying unknown models by substring.
+    private static let sambaNovaAlwaysOnReasoningModelIDs: Set<String> = [
+        "gpt-oss-120b",
+        "deepseek-r1-0528",
+        "deepseek-r1-distill-llama-70b",
+    ]
+
+    private static func isSambaNovaAlwaysOnReasoningModel(_ modelID: String) -> Bool {
+        sambaNovaAlwaysOnReasoningModelIDs.contains(modelID.lowercased())
     }
 
 }

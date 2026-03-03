@@ -108,7 +108,9 @@ struct ProviderConfigFormView: View {
                 case .codexAppServer:
                     codexServerSection
                     codexAuthSection
-                case .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .openrouter, .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .gemini:
+                case .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .openrouter,
+                     .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai,
+                     .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .gemini:
                     apiKeyField
                 case .vertexai:
                     vertexAISection
@@ -1053,7 +1055,9 @@ struct ProviderConfigFormView: View {
                 codexAccount = nil
                 codexRateLimit = nil
                 codexPendingLoginID = nil
-            case .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .openrouter, .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .gemini:
+            case .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .openrouter,
+                 .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai,
+                 .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .gemini:
                 apiKey = provider.apiKey ?? ""
             case .vertexai:
                 serviceAccountJSON = provider.serviceAccountJSON ?? ""
@@ -1366,7 +1370,9 @@ struct ProviderConfigFormView: View {
                 try? modelContext.save()
             }
 
-        case .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .openrouter, .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .gemini:
+        case .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .openrouter,
+             .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek,
+             .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .gemini:
             let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
             await MainActor.run {
                 provider.apiKeyKeychainID = nil
@@ -1441,7 +1447,9 @@ struct ProviderConfigFormView: View {
                 return CodexLocalAuthStore.loadAPIKey() == nil || testStatus == .testing
             }
             return testStatus == .testing || codexAuthStatus == .working
-        case .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .openrouter, .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .gemini:
+        case .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .openrouter,
+             .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek,
+             .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .gemini:
             return apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || testStatus == .testing
         case .vertexai:
             return serviceAccountJSON.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || testStatus == .testing
@@ -1461,7 +1469,9 @@ struct ProviderConfigFormView: View {
                 return CodexLocalAuthStore.loadAPIKey() == nil
             }
             return codexAuthStatus == .working
-        case .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .openrouter, .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .gemini:
+        case .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .openrouter,
+             .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek,
+             .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .gemini:
             return apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .vertexai:
             return serviceAccountJSON.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

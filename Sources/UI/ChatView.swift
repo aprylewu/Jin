@@ -1731,7 +1731,9 @@ struct ChatView: View {
             return Self.xAIImageGenerationModelIDs.contains(lowerModelID)
         case .gemini, .vertexai:
             return Self.geminiImageGenerationModelIDs.contains(lowerModelID)
-        case .openai, .openaiWebSocket, .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .none:
+        case .openai, .openaiWebSocket, .codexAppServer, .openaiCompatible, .cloudflareAIGateway,
+             .openrouter, .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together,
+             .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .none:
             return false
         }
     }
@@ -1754,7 +1756,9 @@ struct ChatView: View {
         switch providerType {
         case .openai, .openaiWebSocket, .anthropic, .perplexity, .xai, .gemini, .vertexai:
             break
-        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq, .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras:
+        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq,
+             .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan,
+             .fireworks, .cerebras, .sambanova:
             return false
         }
 
@@ -1795,7 +1799,8 @@ struct ChatView: View {
             return Self.compatibleAudioInputModelIDs.contains(lowerModelID)
         case .fireworks:
             return Self.fireworksAudioInputModelIDs.contains(lowerModelID)
-        case .anthropic, .perplexity, .groq, .cohere, .xai, .deepseek, .zhipuCodingPlan, .cerebras, .codexAppServer, .none:
+        case .anthropic, .perplexity, .groq, .cohere, .xai, .deepseek, .zhipuCodingPlan,
+             .cerebras, .sambanova, .codexAppServer, .none:
             return false
         }
     }
@@ -2041,6 +2046,9 @@ struct ChatView: View {
     }
 
     private var isReasoningEnabled: Bool {
+        if reasoningMustRemainEnabled {
+            return true
+        }
         if providerType == .fireworks, isFireworksMiniMaxM2FamilyModel(conversationEntity.modelID) {
             return true
         }
@@ -2052,7 +2060,9 @@ struct ChatView: View {
         switch providerType {
         case .perplexity:
             return controls.webSearch?.enabled ?? true
-        case .openai, .openaiWebSocket, .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .anthropic, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .gemini, .vertexai, .none:
+        case .openai, .openaiWebSocket, .codexAppServer, .openaiCompatible, .cloudflareAIGateway,
+             .openrouter, .anthropic, .groq, .cohere, .mistral, .deepinfra, .together, .xai,
+             .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .gemini, .vertexai, .none:
             return controls.webSearch?.enabled == true
         }
     }
@@ -2082,10 +2092,11 @@ struct ChatView: View {
 
     private var supportsReasoningDisableToggle: Bool {
         guard supportsReasoningControl else { return false }
-        if resolvedModelSettings?.reasoningCanDisable == false {
-            return false
-        }
-        return true
+        return !reasoningMustRemainEnabled
+    }
+
+    private var reasoningMustRemainEnabled: Bool {
+        resolvedModelSettings?.reasoningCanDisable == false
     }
 
     private var supportsNativeWebSearchControl: Bool {
@@ -2151,7 +2162,9 @@ struct ChatView: View {
         switch providerType {
         case .gemini, .vertexai:
             return true
-        case .openai, .openaiWebSocket, .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .none:
+        case .openai, .openaiWebSocket, .codexAppServer, .openaiCompatible, .cloudflareAIGateway,
+             .openrouter, .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together,
+             .xai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .none:
             return false
         }
     }
@@ -2164,7 +2177,9 @@ struct ChatView: View {
         switch providerType {
         case .openai, .openaiWebSocket, .anthropic, .xai:
             return true
-        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .gemini, .vertexai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .none:
+        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .perplexity,
+             .groq, .cohere, .mistral, .deepinfra, .together, .gemini, .vertexai, .deepseek,
+             .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .none:
             return false
         }
     }
@@ -2183,7 +2198,9 @@ struct ChatView: View {
             return "OpenAI uses prompt cache hints. A stable key and retention hint can improve reuse across similar prompts."
         case .xai:
             return "xAI supports prompt cache hints and optional conversation scoping for continuity across related turns."
-        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .none:
+        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .perplexity,
+             .groq, .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan,
+             .fireworks, .cerebras, .sambanova, .none:
             return "Context cache controls are only available for providers with native prompt caching support."
         }
     }
@@ -2196,7 +2213,9 @@ struct ChatView: View {
             return "Use a stable cache key when your prompt prefix is consistent."
         case .anthropic:
             return "For best results, keep system prompts and tool descriptions stable so Anthropic can reuse cacheable blocks."
-        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .none:
+        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .perplexity,
+             .groq, .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan,
+             .fireworks, .cerebras, .sambanova, .none:
             return "Use explicit mode for Gemini/Vertex cached content resources. Other providers use implicit cache hints."
         }
     }
@@ -2236,7 +2255,9 @@ struct ChatView: View {
             return ContextCacheControls(mode: .implicit)
         case .cloudflareAIGateway:
             return ContextCacheControls(mode: .implicit, ttl: .minutes5)
-        case .codexAppServer, .openaiCompatible, .openrouter, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras:
+        case .codexAppServer, .openaiCompatible, .openrouter, .perplexity, .groq, .cohere,
+             .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan, .fireworks,
+             .cerebras, .sambanova:
             return nil
         }
     }
@@ -2282,7 +2303,9 @@ struct ChatView: View {
             return "Thinking: \(reasoningLabel)"
         case .perplexity:
             return "Reasoning: \(reasoningLabel)"
-        case .openai, .openaiWebSocket, .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .none:
+        case .openai, .openaiWebSocket, .codexAppServer, .openaiCompatible, .cloudflareAIGateway,
+             .openrouter, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek,
+             .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .none:
             return "Reasoning: \(reasoningLabel)"
         }
     }
@@ -2323,7 +2346,9 @@ struct ChatView: View {
             return (controls.webSearch?.contextSize ?? .low).displayName
         case .xai:
             return webSearchSourcesLabel
-        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .anthropic, .groq, .cohere, .mistral, .deepinfra, .together, .gemini, .vertexai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .none:
+        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .anthropic,
+             .groq, .cohere, .mistral, .deepinfra, .together, .gemini, .vertexai, .deepseek,
+             .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .none:
             return "On"
         }
     }
@@ -2402,7 +2427,9 @@ struct ChatView: View {
             return "On"
         case .anthropic:
             return "On"
-        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq, .cohere, .mistral, .deepinfra, .together, .gemini, .vertexai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .none:
+        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq,
+             .cohere, .mistral, .deepinfra, .together, .gemini, .vertexai, .deepseek,
+             .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .none:
             return "On"
         }
     }
@@ -2988,6 +3015,9 @@ struct ChatView: View {
                 ?? models.first(where: { isFireworksModelID($0.id, canonicalID: "glm-4p7") })?.id
         case .cerebras:
             return models.first(where: { $0.id == "zai-glm-4.7" })?.id
+        case .sambanova:
+            return models.first(where: { $0.id == "MiniMax-M2.5" })?.id
+                ?? models.first(where: { $0.id == "gpt-oss-120b" })?.id
         case .gemini:
             for preferredID in Self.geminiPreferredModelOrder {
                 if let exact = models.first(where: { $0.id.lowercased() == preferredID }) {
@@ -3552,7 +3582,9 @@ struct ChatView: View {
             return Self.xAIImageGenerationModelIDs.contains(lowerModelID)
         case .gemini, .vertexai:
             return Self.geminiImageGenerationModelIDs.contains(lowerModelID)
-        case .openai, .openaiWebSocket, .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .none:
+        case .openai, .openaiWebSocket, .codexAppServer, .openaiCompatible, .cloudflareAIGateway,
+             .openrouter, .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together,
+             .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .none:
             return false
         }
     }
@@ -3580,7 +3612,9 @@ struct ChatView: View {
         switch providerType {
         case .openai, .openaiWebSocket, .anthropic, .perplexity, .xai, .gemini, .vertexai:
             break
-        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq, .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras:
+        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq,
+             .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan,
+             .fireworks, .cerebras, .sambanova:
             return false
         }
 
@@ -5161,7 +5195,9 @@ struct ChatView: View {
                     Button("Configure\u{2026}") {
                         openAnthropicWebSearchEditor()
                     }
-                case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq, .cohere, .mistral, .deepinfra, .together, .gemini, .vertexai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .none:
+                case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq,
+                     .cohere, .mistral, .deepinfra, .together, .gemini, .vertexai, .deepseek,
+                     .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .none:
                     EmptyView()
                 }
             }
@@ -6113,10 +6149,11 @@ struct ChatView: View {
     }
 
     private func setReasoningOff() {
-        if providerType == .fireworks, isFireworksMiniMaxM2FamilyModel(conversationEntity.modelID) {
+        if reasoningMustRemainEnabled {
             updateReasoning { reasoning in
                 reasoning.enabled = true
-                if reasoning.effort == nil || reasoning.effort == ReasoningEffort.none {
+                if selectedReasoningConfig?.type == .effort,
+                   (reasoning.effort == nil || reasoning.effort == ReasoningEffort.none) {
                     reasoning.effort = selectedReasoningConfig?.defaultEffort ?? .medium
                 }
             }
@@ -6385,7 +6422,9 @@ struct ChatView: View {
             return WebSearchControls(enabled: true, contextSize: nil, sources: [.web])
         case .anthropic:
             return WebSearchControls(enabled: true)
-        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq, .cohere, .mistral, .deepinfra, .together, .gemini, .vertexai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .none:
+        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq,
+             .cohere, .mistral, .deepinfra, .together, .gemini, .vertexai, .deepseek,
+             .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .none:
             return WebSearchControls(enabled: true, contextSize: nil, sources: nil)
         }
     }
@@ -6411,7 +6450,9 @@ struct ChatView: View {
             controls.webSearch?.contextSize = nil
             controls.webSearch?.sources = nil
             normalizeAnthropicDomainFilters()
-        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq, .cohere, .mistral, .deepinfra, .together, .gemini, .vertexai, .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .none:
+        case .codexAppServer, .openaiCompatible, .cloudflareAIGateway, .openrouter, .groq,
+             .cohere, .mistral, .deepinfra, .together, .gemini, .vertexai, .deepseek,
+             .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .none:
             controls.webSearch?.contextSize = nil
             controls.webSearch?.sources = nil
         }
@@ -6475,6 +6516,8 @@ struct ChatView: View {
         } else if !supportsReasoningControl {
             controls.reasoning = nil
         }
+
+        enforceReasoningAlwaysOnIfRequired()
     }
 
     private func normalizeEffortBasedReasoning(config: ModelReasoningConfig) {
@@ -6482,21 +6525,6 @@ struct ChatView: View {
            controls.reasoning?.enabled == true,
            controls.reasoning?.effort == nil {
             updateReasoning { $0.effort = config.defaultEffort ?? .medium }
-        }
-
-        if providerType == .fireworks, isFireworksMiniMaxM2FamilyModel(conversationEntity.modelID) {
-            if controls.reasoning == nil {
-                controls.reasoning = ReasoningControls(
-                    enabled: true,
-                    effort: config.defaultEffort ?? .medium,
-                    budgetTokens: nil,
-                    summary: nil
-                )
-            }
-            controls.reasoning?.enabled = true
-            if controls.reasoning?.effort == nil || controls.reasoning?.effort == ReasoningEffort.none {
-                controls.reasoning?.effort = config.defaultEffort ?? .medium
-            }
         }
 
         if providerType != .anthropic {
@@ -6528,6 +6556,20 @@ struct ChatView: View {
         controls.reasoning?.effort = nil
         controls.reasoning?.budgetTokens = nil
         controls.reasoning?.summary = nil
+    }
+
+    private func enforceReasoningAlwaysOnIfRequired() {
+        guard reasoningMustRemainEnabled else { return }
+        if controls.reasoning == nil {
+            controls.reasoning = ReasoningControls(enabled: true)
+        } else {
+            controls.reasoning?.enabled = true
+        }
+
+        if selectedReasoningConfig?.type == .effort,
+           controls.reasoning?.effort == nil || controls.reasoning?.effort == ReasoningEffort.none {
+            controls.reasoning?.effort = selectedReasoningConfig?.defaultEffort ?? .medium
+        }
     }
 
     private func normalizeReasoningEffortLimits() {
