@@ -100,12 +100,64 @@ final class BuiltinSearchToolHubTests: XCTestCase {
         XCTAssertEqual(routes.provider(for: tool.name), .brave)
     }
 
+    func testToolDefinitionsFallbackToPerplexityWhenOnlyPerplexityIsConfigured() async throws {
+        configurePluginDefaults(defaultProvider: .exa, exaKey: "", perplexityKey: "pplx-key")
+
+        let controls = GenerationControls(
+            webSearch: WebSearchControls(enabled: true),
+            searchPlugin: nil
+        )
+
+        let (definitions, routes) = await BuiltinSearchToolHub.shared.toolDefinitions(
+            for: controls,
+            useBuiltinSearch: true,
+            defaults: defaults
+        )
+
+        XCTAssertEqual(definitions.count, 1)
+        let tool = try XCTUnwrap(definitions.first)
+        XCTAssertEqual(routes.provider(for: tool.name), .perplexity)
+    }
+
+    func testPerplexitySearchReturnsEmptyResultWhenMaxResultsIsZero() async throws {
+        configurePluginDefaults(defaultProvider: .perplexity, perplexityKey: "pplx-key")
+
+        let controls = GenerationControls(
+            webSearch: WebSearchControls(enabled: true),
+            searchPlugin: SearchPluginControls(provider: .perplexity, maxResults: 0)
+        )
+
+        let (definitions, routes) = await BuiltinSearchToolHub.shared.toolDefinitions(
+            for: controls,
+            useBuiltinSearch: true,
+            defaults: defaults
+        )
+
+        let tool = try XCTUnwrap(definitions.first)
+        let result = try await BuiltinSearchToolHub.shared.executeTool(
+            functionName: tool.name,
+            arguments: [
+                "query": AnyCodable("swift")
+            ],
+            routes: routes
+        )
+
+        XCTAssertFalse(result.isError)
+        let data = Data(result.text.utf8)
+        let json = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(json["provider"] as? String, SearchPluginProvider.perplexity.rawValue)
+        XCTAssertEqual(json["resultCount"] as? Int, 0)
+        let rows = try XCTUnwrap(json["results"] as? [[String: Any]])
+        XCTAssertTrue(rows.isEmpty)
+    }
+
     private func configurePluginDefaults(
         defaultProvider: SearchPluginProvider,
         exaKey: String = "",
         braveKey: String = "",
         jinaKey: String = "",
-        firecrawlKey: String = ""
+        firecrawlKey: String = "",
+        perplexityKey: String = ""
     ) {
         defaults.set(true, forKey: AppPreferenceKeys.pluginWebSearchEnabled)
         defaults.set(defaultProvider.rawValue, forKey: AppPreferenceKeys.pluginWebSearchDefaultProvider)
@@ -114,6 +166,7 @@ final class BuiltinSearchToolHubTests: XCTestCase {
         defaults.set(braveKey, forKey: AppPreferenceKeys.pluginWebSearchBraveAPIKey)
         defaults.set(jinaKey, forKey: AppPreferenceKeys.pluginWebSearchJinaAPIKey)
         defaults.set(firecrawlKey, forKey: AppPreferenceKeys.pluginWebSearchFirecrawlAPIKey)
+        defaults.set(perplexityKey, forKey: AppPreferenceKeys.pluginWebSearchPerplexityAPIKey)
     }
 
     func testExaSearchTypeLegacyKeywordMapsToFast() {
@@ -130,5 +183,14 @@ final class BuiltinSearchToolHubTests: XCTestCase {
         let settings = WebSearchPluginSettingsStore.load(defaults: defaults)
 
         XCTAssertEqual(settings.exaSearchType, .fast)
+    }
+
+    func testWebSearchPluginSettingsLoadPerplexityKey() {
+        defaults.set("  pplx-key  ", forKey: AppPreferenceKeys.pluginWebSearchPerplexityAPIKey)
+        defaults.set(true, forKey: AppPreferenceKeys.pluginWebSearchEnabled)
+
+        let settings = WebSearchPluginSettingsStore.load(defaults: defaults)
+
+        XCTAssertEqual(settings.apiKey(for: .perplexity), "pplx-key")
     }
 }
