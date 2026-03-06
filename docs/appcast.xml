@@ -3,6 +3,15 @@
     <channel>
         <title>Jin</title>
         <item>
+            <title>0.69</title>
+            <pubDate>Fri, 06 Mar 2026 09:11:24 +0800</pubDate>
+            <link>https://github.com/hrayleung/Jin/releases</link>
+            <sparkle:version>277</sparkle:version>
+            <sparkle:shortVersionString>0.69</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/hrayleung/Jin/releases/download/v0.69/Jin-0.69.zip" length="24193234" type="application/octet-stream" sparkle:edSignature="3nX5xwYPMLfVfYtLKauNOzIct/GHtfI7L7n4Y7HPfkdkLAEfJLfNshnYyLY5gdm61v/TJlN9bj7D9xRfX4RECQ=="/>
+        </item>
+        <item>
             <title>0.68</title>
             <pubDate>Thu, 05 Mar 2026 23:03:51 +0800</pubDate>
             <link>https://github.com/hrayleung/Jin/releases</link>
@@ -82,15 +91,6 @@
             <sparkle:shortVersionString>0.6</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/hrayleung/Jin/releases/download/v0.6/Jin-0.6.zip" length="22951167" type="application/octet-stream" sparkle:edSignature="YMS0ZeLIKA6LIQTXS1OsZUAXFPPi7rQMOGZjDHN4+XzDBL/wtjDiLVCrhNjnlzcO/udlCsyEJwR4ahYGIXcEBA=="/>
-        </item>
-        <item>
-            <title>0.59</title>
-            <pubDate>Sun, 01 Mar 2026 21:10:14 +0800</pubDate>
-            <link>https://github.com/hrayleung/Jin/releases</link>
-            <sparkle:version>231</sparkle:version>
-            <sparkle:shortVersionString>0.59</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/hrayleung/Jin/releases/download/v0.59/Jin-0.59.zip" length="22950105" type="application/octet-stream" sparkle:edSignature="4ejQYAoPBxH4unZpSnoXvGZRWk5rLbNDeORjaJQa5oH44UZewGVh9qfmDnlVHZ+srQ7U4SkgnBbKf6XB9E45Bw=="/>
         </item>
     </channel>
 </rss>
