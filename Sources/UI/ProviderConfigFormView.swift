@@ -99,6 +99,7 @@ struct ProviderConfigFormView: View {
 
                 switch providerType {
                 case .codexAppServer:
+                    codexOverviewSection
                     codexServerSection
                     codexAuthSection
                     codexWorkingDirectoryPresetsSection
@@ -304,6 +305,7 @@ struct ProviderConfigFormView: View {
             await MainActor.run {
                 if providerType == .codexAppServer {
                     loadCodexWorkingDirectoryPresets()
+                    codexServerController.refreshManagedProcesses()
                 } else {
                     codexWorkingDirectoryPresets = []
                 }
@@ -331,6 +333,9 @@ struct ProviderConfigFormView: View {
             codexRateLimit = nil
             codexAuthStatus = .idle
             scheduleCredentialSave()
+            if codexAuthMode == .chatGPT {
+                Task { await refreshCodexAccountStatus(forceRefreshToken: false) }
+            }
         }
         .onChange(of: serviceAccountJSON) { _, _ in
             guard hasLoadedCredentials else { return }
@@ -500,6 +505,14 @@ struct ProviderConfigFormView: View {
 
     // MARK: - Codex Auth
 
+    private var codexOverviewSection: some View {
+        VStack(alignment: .leading, spacing: JinSpacing.small) {
+            Text("Jin talks to Codex App Server over WebSocket. Use this screen for provider-level setup, then tune per-chat sandbox, personality, and working directory from the chat toolbar.")
+                .jinInfoCallout()
+        }
+        .padding(.vertical, 4)
+    }
+
     private var codexServerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
@@ -524,6 +537,13 @@ struct ProviderConfigFormView: View {
                     .foregroundStyle(.secondary)
             }
 
+            if codexServerController.managedProcessCount > 0,
+               case .stopped = codexServerController.status {
+                Text("Detected \(codexServerController.managedProcessCount) Jin-managed Codex app-server process(es) still running. Use Force Stop to clean them up.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
             HStack {
                 Button {
                     startCodexServer()
@@ -540,6 +560,22 @@ struct ProviderConfigFormView: View {
                 }
                 .buttonStyle(.borderless)
                 .disabled(codexServerStopDisabled)
+
+                Button(role: .destructive) {
+                    forceStopCodexServer()
+                } label: {
+                    Label("Force Stop", systemImage: "bolt.slash.fill")
+                }
+                .buttonStyle(.borderless)
+                .disabled(codexServerForceStopDisabled)
+
+                Button {
+                    codexServerController.refreshManagedProcesses()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.borderless)
+                .help("Refresh Jin-managed Codex process status")
             }
         }
         .padding(.vertical, 4)
@@ -611,6 +647,15 @@ struct ProviderConfigFormView: View {
         }
     }
 
+    private var codexServerForceStopDisabled: Bool {
+        switch codexServerController.status {
+        case .stopping, .failed:
+            return false
+        default:
+            return !codexServerController.hasManagedProcesses
+        }
+    }
+
     private var codexServerListenURL: String {
         let fallback = ProviderType.codexAppServer.defaultBaseURL ?? "ws://127.0.0.1:4500"
         let trimmed = (provider.baseURL ?? fallback).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -652,12 +697,17 @@ struct ProviderConfigFormView: View {
         codexServerController.stop()
     }
 
+    private func forceStopCodexServer() {
+        codexServerLaunchError = nil
+        codexServerController.forceStopManagedServers()
+    }
+
     private var codexAuthSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Picker("Authentication", selection: $codexAuthMode) {
+                Text("ChatGPT").tag(CodexAuthMode.chatGPT)
                 Text("API Key").tag(CodexAuthMode.apiKey)
-                Text("ChatGPT Account").tag(CodexAuthMode.chatGPT)
-                Text("Local Codex").tag(CodexAuthMode.localCodex)
+                Text("Use Codex Login").tag(CodexAuthMode.localCodex)
             }
             .pickerStyle(.segmented)
 
@@ -731,11 +781,11 @@ struct ProviderConfigFormView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Text("Reading API key from `\(authPath)`.")
+            Text("Reusing the API key stored by your local Codex CLI in `\(authPath)`.")
                 .foregroundStyle(.secondary)
 
             if !hasLocalKey {
-                Text("No OPENAI_API_KEY found. Update your Codex login/auth first.")
+                Text("No `OPENAI_API_KEY` found yet. Run `codex login` or update your local auth file first.")
                     .foregroundStyle(.secondary)
                     .font(.caption)
             }
@@ -860,6 +910,17 @@ struct ProviderConfigFormView: View {
         }
 
         return parts.joined(separator: " · ")
+    }
+
+    private var codexCanUseCurrentAuthenticationMode: Bool {
+        switch codexAuthMode {
+        case .apiKey:
+            return !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .chatGPT:
+            return codexAccount?.isAuthenticated == true && codexAuthStatus == .connected
+        case .localCodex:
+            return CodexLocalAuthStore.loadAPIKey() != nil
+        }
     }
 
     // MARK: - OpenRouter Usage
@@ -1573,13 +1634,7 @@ struct ProviderConfigFormView: View {
     private var isTestDisabled: Bool {
         switch ProviderType(rawValue: provider.typeRaw) {
         case .codexAppServer:
-            if codexAuthMode == .apiKey {
-                return apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || testStatus == .testing
-            }
-            if codexAuthMode == .localCodex {
-                return CodexLocalAuthStore.loadAPIKey() == nil || testStatus == .testing
-            }
-            return testStatus == .testing || codexAuthStatus == .working
+            return !codexCanUseCurrentAuthenticationMode || testStatus == .testing || codexAuthStatus == .working
         case .githubCopilot, .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .vercelAIGateway, .openrouter,
              .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek,
              .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .gemini:
@@ -1595,13 +1650,7 @@ struct ProviderConfigFormView: View {
         guard !isFetchingModels else { return true }
         switch providerType {
         case .codexAppServer:
-            if codexAuthMode == .apiKey {
-                return apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            }
-            if codexAuthMode == .localCodex {
-                return CodexLocalAuthStore.loadAPIKey() == nil
-            }
-            return codexAuthStatus == .working
+            return !codexCanUseCurrentAuthenticationMode || codexAuthStatus == .working
         case .githubCopilot, .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .vercelAIGateway, .openrouter,
              .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek,
              .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .gemini:
