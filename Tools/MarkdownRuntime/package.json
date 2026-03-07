@@ -1,0 +1,12 @@
+{
+  "name": "jin-markdown-runtime",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build-prism-runtime.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.27.3",
+    "prismjs": "1.30.0"
+  }
+}
