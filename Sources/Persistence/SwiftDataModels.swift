@@ -216,6 +216,10 @@ final class MessageEntity {
     var generatedProviderID: String?
     var generatedModelID: String?
     var generatedModelName: String?
+    /// Per-message MCP server names selected via slash command. Stored as JSON-encoded [String].
+    var perMessageMCPServerNamesData: Data?
+    /// Per-message MCP server IDs for restoring selection on edit. Stored as JSON-encoded [String].
+    var perMessageMCPServerIDsData: Data?
 
     @Relationship var conversation: ConversationEntity?
 
@@ -234,7 +238,9 @@ final class MessageEntity {
         generatedProviderID: String? = nil,
         generatedModelID: String? = nil,
         generatedModelName: String? = nil,
-        thinkingVisible: Bool = true
+        thinkingVisible: Bool = true,
+        perMessageMCPServerNamesData: Data? = nil,
+        perMessageMCPServerIDsData: Data? = nil
     ) {
         self.id = id
         self.role = role
@@ -251,6 +257,8 @@ final class MessageEntity {
         self.generatedModelID = generatedModelID
         self.generatedModelName = generatedModelName
         self.thinkingVisible = thinkingVisible
+        self.perMessageMCPServerNamesData = perMessageMCPServerNamesData
+        self.perMessageMCPServerIDsData = perMessageMCPServerIDsData
     }
 
     var responseMetrics: ResponseMetrics? {
@@ -280,6 +288,7 @@ final class MessageEntity {
         let toolResults = try toolResultsData.flatMap { try decoder.decode([ToolResult].self, from: $0) }
         let searchActivities = try searchActivitiesData.flatMap { try decoder.decode([SearchActivity].self, from: $0) }
         let codexToolActivities = try codexToolActivitiesData.flatMap { try decoder.decode([CodexToolActivity].self, from: $0) }
+        let perMessageMCPServerNames = try perMessageMCPServerNamesData.flatMap { try decoder.decode([String].self, from: $0) }
 
         return Message(
             id: id,
@@ -289,7 +298,8 @@ final class MessageEntity {
             toolResults: toolResults,
             searchActivities: searchActivities,
             codexToolActivities: codexToolActivities,
-            timestamp: timestamp
+            timestamp: timestamp,
+            perMessageMCPServerNames: perMessageMCPServerNames
         )
     }
 
@@ -301,6 +311,7 @@ final class MessageEntity {
         let toolResultsData = try message.toolResults.map { try encoder.encode($0) }
         let searchActivitiesData = try message.searchActivities.map { try encoder.encode($0) }
         let codexToolActivitiesData = try message.codexToolActivities.map { try encoder.encode($0) }
+        let perMessageMCPServerNamesData = try message.perMessageMCPServerNames.map { try encoder.encode($0) }
 
         return MessageEntity(
             id: message.id,
@@ -310,7 +321,8 @@ final class MessageEntity {
             toolCallsData: toolCallsData,
             toolResultsData: toolResultsData,
             searchActivitiesData: searchActivitiesData,
-            codexToolActivitiesData: codexToolActivitiesData
+            codexToolActivitiesData: codexToolActivitiesData,
+            perMessageMCPServerNamesData: perMessageMCPServerNamesData
         )
     }
 }
