@@ -114,23 +114,19 @@ actor SearchSourcePreviewResolver {
     private var cacheByURL: [String: CacheEntry] = [:]
     private var inFlightByURL: [String: Task<String?, Never>] = [:]
     private let cacheFileURL: URL?
-    private let overrideSession: URLSession?
+    private let overrideDataProvider: HTTPDataProvider?
     private let fileManager: FileManager
     private let now: () -> Date
-
-    private var session: URLSession {
-        overrideSession ?? .shared
-    }
 
     init(
         fileManager: FileManager = .default,
         cacheFileURL: URL? = nil,
-        session: URLSession? = nil,
+        dataProvider: HTTPDataProvider? = nil,
         now: @escaping () -> Date = Date.init
     ) {
         self.fileManager = fileManager
         self.cacheFileURL = cacheFileURL ?? Self.defaultCacheFileURL(fileManager: fileManager)
-        self.overrideSession = session
+        self.overrideDataProvider = dataProvider
         self.now = now
         cacheByURL = Self.loadCacheFromDisk(
             cacheFileURL: self.cacheFileURL,
@@ -263,7 +259,7 @@ actor SearchSourcePreviewResolver {
             let (data, response) = try await NetworkDebugRequestExecutor.data(
                 for: request,
                 mode: "search_preview",
-                session: session
+                dataProvider: overrideDataProvider
             )
             guard !Task.isCancelled else { return nil }
             guard let http = response as? HTTPURLResponse else { return nil }
@@ -356,7 +352,7 @@ actor SearchSourcePreviewResolver {
             let (data, response) = try await NetworkDebugRequestExecutor.data(
                 for: request,
                 mode: "search_preview_oembed",
-                session: session
+                dataProvider: overrideDataProvider
             )
             guard !Task.isCancelled else { return nil }
             guard let http = response as? HTTPURLResponse else { return nil }

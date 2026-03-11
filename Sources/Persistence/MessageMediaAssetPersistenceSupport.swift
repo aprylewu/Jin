@@ -6,10 +6,10 @@ enum MessageMediaAssetPersistenceSupport {
     static func persistManagedRemoteImageToDisk(
         from url: URL,
         mimeType: String,
-        session: URLSession? = nil
+        dataProvider: HTTPDataProvider? = nil
     ) async -> URL? {
         do {
-            let (data, response) = try await remoteData(from: url, mode: "attachment_image_download", session: session)
+            let (data, response) = try await remoteData(from: url, mode: "attachment_image_download", dataProvider: dataProvider)
             guard let httpResponse = response as? HTTPURLResponse,
                   (200...299).contains(httpResponse.statusCode),
                   !data.isEmpty else {
@@ -28,9 +28,9 @@ enum MessageMediaAssetPersistenceSupport {
         }
     }
 
-    static func persistRemoteVideoToDisk(from url: URL, session: URLSession? = nil) async -> URL? {
+    static func persistRemoteVideoToDisk(from url: URL, dataProvider: HTTPDataProvider? = nil) async -> URL? {
         do {
-            let (data, response) = try await remoteData(from: url, mode: "attachment_video_download", session: session)
+            let (data, response) = try await remoteData(from: url, mode: "attachment_video_download", dataProvider: dataProvider)
             guard let httpResponse = response as? HTTPURLResponse,
                   (200...299).contains(httpResponse.statusCode),
                   !data.isEmpty else {
@@ -88,10 +88,10 @@ enum MessageMediaAssetPersistenceSupport {
         }
     }
 
-    private static func remoteData(from url: URL, mode: String, session: URLSession?) async throws -> (Data, URLResponse) {
+    private static func remoteData(from url: URL, mode: String, dataProvider: HTTPDataProvider?) async throws -> (Data, URLResponse) {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        return try await NetworkDebugRequestExecutor.data(for: request, mode: mode, session: session)
+        return try await NetworkDebugRequestExecutor.data(for: request, mode: mode, dataProvider: dataProvider)
     }
 
     private static func fallbackExtension(from url: URL, defaultValue: String) -> String {

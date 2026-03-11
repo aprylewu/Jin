@@ -4,8 +4,8 @@ import XCTest
 
 final class XAIAdapterMediaTests: XCTestCase {
     func testXAIImageGenerationBuildsRequestAndReturnsImageURL() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -86,8 +86,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIStreamingAppendsNoticeForIncompleteResponse() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -153,8 +153,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIImageGenerationProUsesImageEndpoint() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -236,8 +236,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIImageGenerationParsesBase64ImageResponse() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -297,8 +297,8 @@ final class XAIAdapterMediaTests: XCTestCase {
         ]
 
         for modelID in imageModelIDs {
-            let (session, protocolType) = makeMockedURLSession()
-            let networkManager = NetworkManager(urlSession: session)
+            let (configuration, protocolType) = makeMockedSessionConfiguration()
+            let networkManager = NetworkManager(configuration: configuration)
 
             let providerConfig = ProviderConfig(
                 id: "x",
@@ -347,8 +347,8 @@ final class XAIAdapterMediaTests: XCTestCase {
         ]
 
         for modelID in chatModelIDs {
-            let (session, protocolType) = makeMockedURLSession()
-            let networkManager = NetworkManager(urlSession: session)
+            let (configuration, protocolType) = makeMockedSessionConfiguration()
+            let networkManager = NetworkManager(configuration: configuration)
 
             let providerConfig = ProviderConfig(
                 id: "x",
@@ -392,8 +392,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIChatFallsBackToTextForVideoInput() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -453,8 +453,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIImageEditUsesEditsEndpointWhenInputImageProvided() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -530,8 +530,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIFollowUpPromptUsesLatestAssistantImageForEdit() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -612,8 +612,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIChainedEditPromptRetainsInstructionHistory() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -698,8 +698,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIChainedEditPrefersLatestAssistantImageOverOlderUserUpload() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -777,8 +777,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIVideoGenerationSubmitsToVideosEndpointWithControls() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -845,8 +845,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIVideoGenerationPollsUntilDoneAndDownloadsVideo() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -944,8 +944,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIVideoGenerationDoesNotAbortOnDecodeFailuresWhenRawDoneURLExists() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -1027,8 +1027,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIVideoGenerationFailsFastAfterConsecutiveDecodeFailures() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -1085,8 +1085,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIVideoGenerationHandlesExpiredStatus() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -1140,8 +1140,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIVideoGenerationHandlesFailedStatus() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -1191,8 +1191,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIImageToVideoIncludesImageObjectParameter() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -1253,8 +1253,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIVideoToVideoUsesRemoteVideoURLMentionedInPromptText() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -1330,8 +1330,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIVideoToVideoIncludesVideoURLAndSkipsUnsupportedControls() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
         let (defaults, defaultsSuiteName) = makeIsolatedUserDefaults()
         defer { defaults.removePersistentDomain(forName: defaultsSuiteName) }
         seedCloudflareR2Defaults(defaults)
@@ -1462,8 +1462,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIVideoToVideoLocalInputFailsWhenR2ConfigMissing() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
         let (defaults, defaultsSuiteName) = makeIsolatedUserDefaults()
         defer { defaults.removePersistentDomain(forName: defaultsSuiteName) }
 
@@ -1524,8 +1524,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIResponsesContextCacheAndUsageCachedTokens() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -1598,9 +1598,67 @@ final class XAIAdapterMediaTests: XCTestCase {
         XCTAssertEqual(finalUsage?.cachedTokens, 6)
     }
 
+    func testXAIResponsesContextCacheOffOmitsConversationHeaderAndCacheFields() async throws {
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
+
+        let providerConfig = ProviderConfig(
+            id: "x",
+            name: "xAI",
+            type: .xai,
+            apiKey: "ignored",
+            baseURL: "https://example.com"
+        )
+
+        protocolType.requestHandler = { request in
+            XCTAssertEqual(request.url?.absoluteString, "https://example.com/responses")
+            XCTAssertNil(request.value(forHTTPHeaderField: "x-grok-conv-id"))
+
+            let body = try XCTUnwrap(requestBodyData(request))
+            let root = try XCTUnwrap(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+            XCTAssertNil(root["prompt_cache_key"])
+            XCTAssertNil(root["prompt_cache_retention"])
+            XCTAssertNil(root["prompt_cache_min_tokens"])
+
+            let response: [String: Any] = [
+                "id": "resp_uncached_1",
+                "output": [
+                    [
+                        "type": "message",
+                        "content": [
+                            ["type": "output_text", "text": "ok"]
+                        ]
+                    ]
+                ]
+            ]
+            let data = try JSONSerialization.data(withJSONObject: response)
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, data)
+        }
+
+        let adapter = XAIAdapter(providerConfig: providerConfig, apiKey: "test-key", networkManager: networkManager)
+
+        let stream = try await adapter.sendMessage(
+            messages: [Message(role: .user, content: [.text("hi")])],
+            modelID: "grok-4-1",
+            controls: GenerationControls(
+                contextCache: ContextCacheControls(
+                    mode: .off,
+                    ttl: .hour1,
+                    cacheKey: "stable-prefix",
+                    conversationID: "conv-123",
+                    minTokensThreshold: 1024
+                )
+            ),
+            tools: [],
+            streaming: false
+        )
+
+        for try await _ in stream {}
+    }
+
     func testXAIResponsesNonStreamingEmitsCitationSearchActivityFromCitations() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -1677,8 +1735,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIResponsesNonStreamingUsesInlineCitationAnnotationsForSnippetPreview() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -1747,8 +1805,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIResponsesStreamingEmitsCitationSearchActivityOnResponseCompleted() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -1819,8 +1877,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIResponsesNonStreamingFallsBackToMarkdownCitationLinksWhenCitationsMissing() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -1877,8 +1935,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIResponsesStreamingFallsBackToMarkdownCitationLinksWhenCitationsMissing() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -1939,8 +1997,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIModelFetchMapsImageCapabilities() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -2021,8 +2079,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIVideoGenerationHandlesNon2xxPollAsFailure() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -2073,8 +2131,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIVideoGenerationSurfacesNestedFailureMessage() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -2130,8 +2188,8 @@ final class XAIAdapterMediaTests: XCTestCase {
     }
 
     func testXAIVideoDownloadInfersMimeTypeFromContentType() async throws {
-        let (session, protocolType) = makeMockedURLSession()
-        let networkManager = NetworkManager(urlSession: session)
+        let (configuration, protocolType) = makeMockedSessionConfiguration()
+        let networkManager = NetworkManager(configuration: configuration)
 
         let providerConfig = ProviderConfig(
             id: "x",
@@ -2230,10 +2288,10 @@ private final class MockURLProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
-private func makeMockedURLSession() -> (URLSession, MockURLProtocol.Type) {
+private func makeMockedSessionConfiguration() -> (URLSessionConfiguration, MockURLProtocol.Type) {
     let config = URLSessionConfiguration.ephemeral
     config.protocolClasses = [MockURLProtocol.self]
-    return (URLSession(configuration: config), MockURLProtocol.self)
+    return (config, MockURLProtocol.self)
 }
 
 private func requestBodyData(_ request: URLRequest) -> Data? {

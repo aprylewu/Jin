@@ -118,7 +118,7 @@ final class SearchSourcePreviewResolverTests: XCTestCase {
             </html>
             """
 
-        let (session, protocolType) = makeMockedURLSession()
+        let (session, protocolType) = makeMockedDataProvider()
         protocolType.requestHandler = { request in
             guard let url = request.url else {
                 throw URLError(.badURL)
@@ -136,7 +136,7 @@ final class SearchSourcePreviewResolverTests: XCTestCase {
 
         let resolver = SearchSourcePreviewResolver(
             cacheFileURL: cacheURL,
-            session: session,
+            dataProvider: session,
             now: { now }
         )
 
@@ -177,7 +177,7 @@ final class SearchSourcePreviewResolverTests: XCTestCase {
             </html>
             """
 
-        let (session, protocolType) = makeMockedURLSession()
+        let (session, protocolType) = makeMockedDataProvider()
         var didHitNetwork = false
         protocolType.requestHandler = { request in
             didHitNetwork = true
@@ -197,7 +197,7 @@ final class SearchSourcePreviewResolverTests: XCTestCase {
 
         let resolver = SearchSourcePreviewResolver(
             cacheFileURL: cacheURL,
-            session: session,
+            dataProvider: session,
             now: { now }
         )
 
@@ -239,7 +239,7 @@ final class SearchSourcePreviewResolverTests: XCTestCase {
             </html>
             """
 
-        let (session, protocolType) = makeMockedURLSession()
+        let (session, protocolType) = makeMockedDataProvider()
         var didHitNetwork = false
         protocolType.requestHandler = { request in
             didHitNetwork = true
@@ -259,7 +259,7 @@ final class SearchSourcePreviewResolverTests: XCTestCase {
 
         let resolver = SearchSourcePreviewResolver(
             cacheFileURL: cacheURL,
-            session: session,
+            dataProvider: session,
             now: { now }
         )
 
@@ -300,8 +300,12 @@ private final class MockURLProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
-private func makeMockedURLSession() -> (URLSession, MockURLProtocol.Type) {
+private func makeMockedDataProvider() -> (HTTPDataProvider, MockURLProtocol.Type) {
     let config = URLSessionConfiguration.ephemeral
     config.protocolClasses = [MockURLProtocol.self]
-    return (URLSession(configuration: config), MockURLProtocol.self)
+    let session = URLSession(configuration: config)
+    let provider: HTTPDataProvider = { request in
+        try await session.data(for: request)
+    }
+    return (provider, MockURLProtocol.self)
 }

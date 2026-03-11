@@ -72,7 +72,7 @@ enum AttachmentImportPipeline {
     }
 
     /// Persist managed images to disk so they have stable file URLs.
-    static func persistImagesToDisk(_ parts: [ContentPart], session: URLSession? = nil) async -> [ContentPart] {
+    static func persistImagesToDisk(_ parts: [ContentPart], dataProvider: HTTPDataProvider? = nil) async -> [ContentPart] {
         guard let storage = try? AttachmentStorageManager() else { return parts }
 
         var result: [ContentPart] = []
@@ -108,7 +108,7 @@ enum AttachmentImportPipeline {
                 storedURL = await MessageMediaAssetPersistenceSupport.persistManagedRemoteImageToDisk(
                     from: remoteURL,
                     mimeType: image.mimeType,
-                    session: session
+                    dataProvider: dataProvider
                 )
             } else {
                 storedURL = nil
