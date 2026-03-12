@@ -38,6 +38,10 @@ Conversation-first: fast, focused, and minimal.
 ## Screenshots
 
 <p align="center">
+  <img src="docs/screenshots/code-exec.png" alt="Code execution with generated visualization in chat" width="1200" />
+</p>
+
+<p align="center">
   <img src="docs/screenshots/multi-model-chat.png" alt="Parallel multi-model conversation in one chat with side-by-side responses" width="1200" />
 </p>
 
