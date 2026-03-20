@@ -115,7 +115,7 @@ enum ChatModelCapabilitySupport {
             return geminiImageGenerationModelIDs.contains(lowerModelID)
         case .codexAppServer, .githubCopilot, .openaiCompatible, .cloudflareAIGateway, .vercelAIGateway,
              .openrouter, .groq, .cohere, .mistral, .deepinfra, .together, .anthropic, .perplexity,
-             .deepseek, .zhipuCodingPlan, .fireworks, .cerebras, .sambanova, .morphllm, .none:
+             .deepseek, .zhipuCodingPlan, .minimax, .minimaxCodingPlan, .fireworks, .cerebras, .sambanova, .morphllm, .none:
             return false
         }
     }
@@ -149,7 +149,7 @@ enum ChatModelCapabilitySupport {
         case .openai, .openaiWebSocket, .anthropic, .perplexity, .xai, .gemini, .vertexai:
             break
         case .codexAppServer, .githubCopilot, .openaiCompatible, .cloudflareAIGateway, .vercelAIGateway, .openrouter, .groq,
-             .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan,
+             .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan, .minimax, .minimaxCodingPlan,
              .fireworks, .cerebras, .sambanova, .morphllm:
             return false
         }
@@ -215,8 +215,8 @@ enum ChatModelCapabilitySupport {
             return compatibleAudioInputModelIDs.contains(lowerModelID)
         case .fireworks:
             return fireworksAudioInputModelIDs.contains(lowerModelID)
-        case .anthropic, .perplexity, .groq, .cohere, .xai, .deepseek, .zhipuCodingPlan,
-             .cerebras, .sambanova, .morphllm, .codexAppServer, .none:
+        case .anthropic, .perplexity, .groq, .cohere, .xai, .deepseek, .zhipuCodingPlan, .minimax, .minimaxCodingPlan,
+             .cerebras, .sambanova, .codexAppServer, .morphllm, .none:
             return false
         }
     }

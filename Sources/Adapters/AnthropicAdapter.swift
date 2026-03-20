@@ -84,6 +84,10 @@ actor AnthropicAdapter: LLMProviderAdapter {
     }
 
     func validateAPIKey(_ key: String) async throws -> Bool {
+        if !supportsModelsEndpoint {
+            return await validateAPIKeyViaMinimalMessage(key)
+        }
+
         let request = NetworkRequestFactory.makeRequest(
             url: try validatedURL("\(baseURL)/models"),
             headers: anthropicHeaders(apiKey: key)
@@ -98,6 +102,16 @@ actor AnthropicAdapter: LLMProviderAdapter {
     }
 
     func fetchAvailableModels() async throws -> [ModelInfo] {
+        if !supportsModelsEndpoint {
+            return (ModelCatalog.orderedRecords[providerConfig.type] ?? []).map { r in
+                ModelInfo(
+                    id: r.id, name: r.displayName, capabilities: r.capabilities,
+                    contextWindow: r.contextWindow, maxOutputTokens: r.maxOutputTokens,
+                    reasoningConfig: r.reasoningConfig
+                )
+            }
+        }
+
         var allModels: [ModelInfo] = []
         var afterID: String?
         var seenIDs: Set<String> = []
@@ -174,6 +188,44 @@ actor AnthropicAdapter: LLMProviderAdapter {
 
     private var baseURL: String {
         providerConfig.baseURL ?? "https://api.anthropic.com/v1"
+    }
+
+    /// Anthropic-compatible providers (e.g. MiniMax Coding Plan) may not expose a `/models` endpoint.
+    private var supportsModelsEndpoint: Bool {
+        providerConfig.type == .anthropic
+    }
+
+    /// Validate by sending a tiny message request and checking for auth errors.
+    private func validateAPIKeyViaMinimalMessage(_ key: String) async -> Bool {
+        let modelID = providerConfig.models.first?.id
+            ?? ModelCatalog.seededModels(for: providerConfig.type).first?.id
+            ?? "MiniMax-M2.7"
+
+        let body: [String: Any] = [
+            "model": modelID,
+            "messages": [["role": "user", "content": "hi"]],
+            "max_tokens": 1,
+            "stream": false
+        ]
+
+        do {
+            let request = try NetworkRequestFactory.makeJSONRequest(
+                url: validatedURL("\(baseURL)/messages"),
+                headers: anthropicHeaders(apiKey: key),
+                body: body
+            )
+            _ = try await networkManager.sendRequest(request)
+            return true
+        } catch {
+            let errorMessage = "\(error)".lowercased()
+            if errorMessage.contains("401") || errorMessage.contains("403")
+                || errorMessage.contains("authentication") || errorMessage.contains("unauthorized")
+                || (errorMessage.contains("invalid") && errorMessage.contains("key")) {
+                return false
+            }
+            // Non-auth errors (e.g. 400 bad request) still confirm the key is reachable.
+            return true
+        }
     }
 
     private var anthropicVersion: String {
