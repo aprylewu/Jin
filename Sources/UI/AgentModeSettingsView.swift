@@ -5,7 +5,7 @@ import AppKit
 
 struct AgentModeSettingsView: View {
     @AppStorage(AppPreferenceKeys.agentModeEnabled) private var agentModeEnabled = false
-    @AppStorage(AppPreferenceKeys.agentModeWorkingDirectory) private var workingDirectory = ""
+    @AppStorage(AppPreferenceKeys.agentModeWorkingDirectory) private var storedWorkingDirectory = ""
     @AppStorage(AppPreferenceKeys.agentModeAllowedCommandPrefixesJSON) private var allowedPrefixesJSON = "[]"
     @AppStorage(AppPreferenceKeys.agentModeDefaultSafePrefixesJSON) private var safePrefixesJSON = ""
     @AppStorage(AppPreferenceKeys.agentModeCommandTimeoutSeconds) private var commandTimeoutSeconds = 120
@@ -13,6 +13,9 @@ struct AgentModeSettingsView: View {
 
     @State private var newPrefix = ""
     @State private var newSafePrefix = ""
+    @State private var rtkStatus: RTKRuntimeStatus?
+    @State private var isRefreshingRTKStatus = false
+    @State private var workingDirectoryDraft = ""
     @AppStorage(AppPreferenceKeys.agentModeToolShell) private var enableShell = true
     @AppStorage(AppPreferenceKeys.agentModeToolFileRead) private var enableFileRead = true
     @AppStorage(AppPreferenceKeys.agentModeToolFileWrite) private var enableFileWrite = true
@@ -31,6 +34,10 @@ struct AgentModeSettingsView: View {
         return AppPreferences.decodeStringArrayJSON(safePrefixesJSON)
     }
 
+    private var workingDirectoryValidation: AgentWorkingDirectorySupport.ValidationState {
+        AgentWorkingDirectorySupport.validationState(for: workingDirectoryDraft)
+    }
+
     var body: some View {
         Form {
             Section {
@@ -46,6 +53,8 @@ struct AgentModeSettingsView: View {
 
                 toolTogglesSection
 
+                rtkSection
+
                 safePrefixesSection
 
                 allowedPrefixesSection
@@ -57,6 +66,16 @@ struct AgentModeSettingsView: View {
         .scrollContentBackground(.hidden)
         .background(JinSemanticColor.detailSurface)
         .navigationTitle("Agent Mode")
+        .onAppear {
+            syncWorkingDirectoryDraft()
+        }
+        .onChange(of: storedWorkingDirectory) { _, _ in
+            syncWorkingDirectoryDraft()
+        }
+        .task(id: agentModeEnabled) {
+            guard agentModeEnabled else { return }
+            await refreshRTKStatus()
+        }
     }
 
     // MARK: - Working Directory
@@ -65,29 +84,38 @@ struct AgentModeSettingsView: View {
         Section {
             HStack(spacing: JinSpacing.small) {
                 TextField(
-                    text: $workingDirectory,
+                    text: $workingDirectoryDraft,
                     prompt: Text("e.g., /Users/you/Projects/my-app")
                 ) {
                     EmptyView()
                 }
                 .textFieldStyle(.roundedBorder)
+                .onChange(of: workingDirectoryDraft) { _, newValue in
+                    applyWorkingDirectory(newValue)
+                }
 
                 Button("Browse") {
                     selectDirectory()
                 }
                 .buttonStyle(.bordered)
             }
+
+            Text(workingDirectoryValidation.message)
+                .font(.caption)
+                .foregroundStyle(workingDirectoryValidation.isError ? Color.orange : .secondary)
+                .lineLimit(2)
+                .textSelection(.enabled)
         } header: {
             Text("Working Directory")
         } footer: {
-            Text("The default working directory for shell commands and file operations.")
+            Text("The default working directory for shell commands and file operations. Empty uses no default cwd.")
         }
     }
 
     // MARK: - Tool Toggles
 
     private var toolTogglesSection: some View {
-        Section("Enabled Tools") {
+        Section {
             Toggle(isOn: $enableShell) {
                 Label("Shell Execute", systemImage: "terminal")
             }
@@ -106,6 +134,100 @@ struct AgentModeSettingsView: View {
             Toggle(isOn: $enableGrep) {
                 Label("Grep Search", systemImage: "magnifyingglass")
             }
+        } header: {
+            Text("Enabled Tools")
+        } footer: {
+            Text("Shell, grep, and glob tools run through the bundled RTK helper. File read/write/edit stay local to preserve precise edit context.")
+        }
+    }
+
+    // MARK: - RTK Status
+
+    private var rtkSection: some View {
+        Section {
+            if let status = rtkStatus {
+                LabeledContent("Version") {
+                    Text(status.helperVersion ?? "Unavailable")
+                        .font(.system(.caption, design: .monospaced))
+                }
+
+                LabeledContent("Helper Path") {
+                    Text(status.helperURL?.path ?? "Missing")
+                        .font(.system(.caption, design: .monospaced))
+                        .multilineTextAlignment(.trailing)
+                        .textSelection(.enabled)
+                }
+
+                LabeledContent("RTK Config") {
+                    if let configURL = status.configURL {
+                        Text(configURL.path)
+                            .font(.system(.caption, design: .monospaced))
+                            .multilineTextAlignment(.trailing)
+                            .textSelection(.enabled)
+                    } else {
+                        Text("Unavailable")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                LabeledContent("Tee Directory") {
+                    if let teeDirectoryURL = status.teeDirectoryURL {
+                        Text(teeDirectoryURL.path)
+                            .font(.system(.caption, design: .monospaced))
+                            .multilineTextAlignment(.trailing)
+                            .textSelection(.enabled)
+                    } else {
+                        Text("Unavailable")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if let errorDescription = status.errorDescription {
+                    Text(errorDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if isRefreshingRTKStatus {
+                HStack(spacing: JinSpacing.small) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Checking RTK helper…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Text("RTK status unavailable.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: JinSpacing.small) {
+                Button("Refresh Status") {
+                    Task { await refreshRTKStatus() }
+                }
+                .buttonStyle(.bordered)
+
+                if let configURL = rtkStatus?.configURL,
+                   FileManager.default.fileExists(atPath: configURL.path) {
+                    Button("Open Config") {
+                        NSWorkspace.shared.open(configURL)
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                if let teeDirectoryURL = rtkStatus?.teeDirectoryURL {
+                    Button("Reveal Tee Directory") {
+                        NSWorkspace.shared.activateFileViewerSelecting([teeDirectoryURL])
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        } header: {
+            Text("Bundled RTK")
+        } footer: {
+            Text("Agent shell commands must be rewriteable by RTK. Jin manages RTK tee output so you can reopen full raw logs when the compact view is not enough.")
         }
     }
 
@@ -169,7 +291,7 @@ struct AgentModeSettingsView: View {
         } header: {
             Text("Safe Commands")
         } footer: {
-            Text("Commands starting with these prefixes are auto-approved without manual confirmation.")
+            Text("Commands starting with these prefixes are auto-approved without manual confirmation, but RTK still rejects commands it cannot rewrite.")
         }
     }
 
@@ -273,14 +395,32 @@ struct AgentModeSettingsView: View {
         panel.prompt = "Select"
         panel.message = "Choose a working directory for agent mode"
 
-        if let currentDir = URL(string: workingDirectory), FileManager.default.fileExists(atPath: currentDir.path) {
-            panel.directoryURL = currentDir
+        let normalizedWorkingDirectory = AgentWorkingDirectorySupport.normalizedPath(from: workingDirectoryDraft)
+        if !normalizedWorkingDirectory.isEmpty {
+            let currentDir = URL(fileURLWithPath: normalizedWorkingDirectory, isDirectory: true)
+            if FileManager.default.fileExists(atPath: currentDir.path) {
+                panel.directoryURL = currentDir
+            }
         }
 
         if panel.runModal() == .OK, let url = panel.url {
-            workingDirectory = url.path
+            applyWorkingDirectory(url.path)
+            workingDirectoryDraft = url.path
         }
         #endif
+    }
+
+    private func syncWorkingDirectoryDraft() {
+        if workingDirectoryDraft != storedWorkingDirectory {
+            workingDirectoryDraft = storedWorkingDirectory
+        }
+    }
+
+    private func applyWorkingDirectory(_ value: String) {
+        let normalized = AgentWorkingDirectorySupport.normalizedPath(from: value)
+        if storedWorkingDirectory != normalized {
+            storedWorkingDirectory = normalized
+        }
     }
 
     private func addPrefix() {
@@ -317,6 +457,15 @@ struct AgentModeSettingsView: View {
         var prefixes = safePrefixes
         prefixes.removeAll { $0 == prefix }
         safePrefixesJSON = AppPreferences.encodeStringArrayJSON(prefixes)
+    }
+
+    @MainActor
+    private func refreshRTKStatus() async {
+        guard !isRefreshingRTKStatus else { return }
+        isRefreshingRTKStatus = true
+        defer { isRefreshingRTKStatus = false }
+        let status = await RTKRuntimeSupport.status()
+        rtkStatus = status
     }
 }
 

@@ -6,7 +6,12 @@ import AppKit
 struct AgentModePopoverView: View {
     @Binding var isActive: Bool
     @AppStorage(AppPreferenceKeys.agentModeBypassPermissions) private var bypassPermissions = false
-    @AppStorage(AppPreferenceKeys.agentModeWorkingDirectory) private var workingDirectory = ""
+    @AppStorage(AppPreferenceKeys.agentModeWorkingDirectory) private var storedWorkingDirectory = ""
+    @State private var workingDirectoryDraft = ""
+
+    private var workingDirectoryValidation: AgentWorkingDirectorySupport.ValidationState {
+        AgentWorkingDirectorySupport.validationState(for: workingDirectoryDraft)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -33,6 +38,12 @@ struct AgentModePopoverView: View {
                 .stroke(JinSemanticColor.separator.opacity(0.45), lineWidth: JinStrokeWidth.hairline)
         )
         .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+        .onAppear {
+            syncDraftFromStorage()
+        }
+        .onChange(of: storedWorkingDirectory) { _, _ in
+            syncDraftFromStorage()
+        }
     }
 
     // MARK: - Header
@@ -109,7 +120,7 @@ struct AgentModePopoverView: View {
 
             HStack(spacing: JinSpacing.small) {
                 TextField(
-                    text: $workingDirectory,
+                    text: $workingDirectoryDraft,
                     prompt: Text("/Users/you/Projects/my-app")
                 ) {
                     EmptyView()
@@ -124,8 +135,16 @@ struct AgentModePopoverView: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: JinRadius.small, style: .continuous)
-                        .stroke(JinSemanticColor.separator.opacity(0.45), lineWidth: JinStrokeWidth.hairline)
+                        .stroke(
+                            workingDirectoryValidation.isError
+                                ? Color.orange.opacity(0.55)
+                                : JinSemanticColor.separator.opacity(0.45),
+                            lineWidth: JinStrokeWidth.hairline
+                        )
                 )
+                .onChange(of: workingDirectoryDraft) { _, newValue in
+                    applyWorkingDirectory(newValue)
+                }
 
                 Button {
                     selectDirectory()
@@ -137,6 +156,12 @@ struct AgentModePopoverView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             }
+
+            Text(workingDirectoryValidation.message)
+                .font(.caption)
+                .foregroundStyle(workingDirectoryValidation.isError ? Color.orange : .secondary)
+                .lineLimit(2)
+                .textSelection(.enabled)
         }
         .padding(.horizontal, JinSpacing.large)
         .padding(.vertical, JinSpacing.medium)
@@ -154,13 +179,31 @@ struct AgentModePopoverView: View {
         panel.prompt = "Select"
         panel.message = "Choose a working directory for agent mode"
 
-        if !workingDirectory.isEmpty {
-            panel.directoryURL = URL(fileURLWithPath: workingDirectory)
+        let currentWorkingDirectory = workingDirectoryDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !currentWorkingDirectory.isEmpty {
+            let currentURL = URL(fileURLWithPath: currentWorkingDirectory, isDirectory: true)
+            if FileManager.default.fileExists(atPath: currentURL.path) {
+                panel.directoryURL = currentURL
+            }
         }
 
         if panel.runModal() == .OK, let url = panel.url {
-            workingDirectory = url.path
+            applyWorkingDirectory(url.path)
+            workingDirectoryDraft = url.path
         }
         #endif
+    }
+
+    private func syncDraftFromStorage() {
+        if workingDirectoryDraft != storedWorkingDirectory {
+            workingDirectoryDraft = storedWorkingDirectory
+        }
+    }
+
+    private func applyWorkingDirectory(_ value: String) {
+        let normalized = AgentWorkingDirectorySupport.normalizedPath(from: value)
+        if storedWorkingDirectory != normalized {
+            storedWorkingDirectory = normalized
+        }
     }
 }

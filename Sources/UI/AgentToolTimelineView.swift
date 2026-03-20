@@ -375,6 +375,10 @@ private struct AgentToolEntryView: View {
                 }
                 .padding(.vertical, JinSpacing.xSmall)
             }
+
+            if executionStatus != .running, let rawOutputPath = activity.rawOutputPath {
+                ToolOutputFileActionRowView(rawOutputPath: rawOutputPath)
+            }
         }
         .transition(.opacity.combined(with: .move(edge: .top)))
     }
