@@ -127,11 +127,11 @@ enum ChatStreamingOrchestrator {
                     history.insert(Message(role: .system, content: [.text(systemPrompt)]), at: 0)
                 }
 
-                if let maxMessages = ctx.maxHistoryMessages, ctx.shouldTruncateMessages, history.count > maxMessages {
-                    let systemMessages = history.prefix(while: { $0.role == .system })
-                    let nonSystemMessages = history.drop(while: { $0.role == .system })
-                    let kept = Array(nonSystemMessages.suffix(maxMessages))
-                    history = Array(systemMessages) + kept
+                if let maxMessages = ctx.maxHistoryMessages, ctx.shouldTruncateMessages {
+                    history = ChatContextUsageEstimator.historyCappedByMessageCount(
+                        history,
+                        maxHistoryMessages: maxMessages
+                    )
                 }
 
                 if ctx.shouldTruncateMessages {
