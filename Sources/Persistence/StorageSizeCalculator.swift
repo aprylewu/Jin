@@ -3,7 +3,6 @@ import Foundation
 enum StorageCategory: String, CaseIterable, Identifiable {
     case attachments
     case database
-    case backups
     case networkLogs
     case mcpData
     case speechModels
@@ -14,7 +13,6 @@ enum StorageCategory: String, CaseIterable, Identifiable {
         switch self {
         case .attachments: return "Attachments"
         case .database: return "Database"
-        case .backups: return "Backups"
         case .networkLogs: return "Network Logs"
         case .mcpData: return "MCP Server Data"
         case .speechModels: return "Speech Models"
@@ -25,7 +23,6 @@ enum StorageCategory: String, CaseIterable, Identifiable {
         switch self {
         case .attachments: return "paperclip"
         case .database: return "cylinder"
-        case .backups: return "arrow.counterclockwise"
         case .networkLogs: return "doc.text"
         case .mcpData: return "server.rack"
         case .speechModels: return "waveform"
@@ -36,7 +33,6 @@ enum StorageCategory: String, CaseIterable, Identifiable {
         switch self {
         case .attachments: return "Images, videos, audio, and files from conversations."
         case .database: return "Chat history, assistants, and provider configurations."
-        case .backups: return "Automatic database backups for crash recovery (max 3)."
         case .networkLogs: return "HTTP/WebSocket debug trace files."
         case .mcpData: return "Node isolation directories for MCP servers."
         case .speechModels: return "On-device WhisperKit and TTSKit models."
@@ -88,8 +84,11 @@ actor StorageSizeCalculator {
         guard let url = directoryURL(for: category),
               fileManager.fileExists(atPath: url.path) else { return }
 
-        // Hard guard: never allow deleting the Application Support root
-        if let appSupport = applicationSupportURL(), url == appSupport { return }
+        // Hard guard: never allow deleting the raw Application Support root
+        if let appSupport = try? AppDataLocations.applicationSupportDirectory(fileManager: fileManager),
+           url == appSupport {
+            return
+        }
 
         try fileManager.removeItem(at: url)
 
@@ -97,7 +96,7 @@ actor StorageSizeCalculator {
         switch category {
         case .attachments, .mcpData:
             try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
-        case .speechModels, .database, .networkLogs, .backups:
+        case .speechModels, .database, .networkLogs:
             break
         }
     }
@@ -107,28 +106,16 @@ actor StorageSizeCalculator {
     private func directoryURL(for category: StorageCategory) -> URL? {
         switch category {
         case .attachments:
-            return jinAppSupportURL()?.appendingPathComponent("Attachments", isDirectory: true)
+            return try? AppDataLocations.attachmentsDirectoryURL(fileManager: fileManager)
         case .database:
-            return applicationSupportURL()
-        case .backups:
-            return jinAppSupportURL()?.appendingPathComponent("Backups", isDirectory: true)
+            return try? AppDataLocations.databaseDirectoryURL(fileManager: fileManager)
         case .networkLogs:
-            return jinAppSupportURL()?
-                .appendingPathComponent("Logs", isDirectory: true)
-                .appendingPathComponent("network-trace", isDirectory: true)
+            return try? AppDataLocations.networkTraceDirectoryURL(fileManager: fileManager)
         case .mcpData:
-            return jinAppSupportURL()?.appendingPathComponent("MCP", isDirectory: true)
+            return try? AppDataLocations.mcpRuntimeDirectoryURL(fileManager: fileManager)
         case .speechModels:
             return speechModelsURL()
         }
-    }
-
-    private func applicationSupportURL() -> URL? {
-        fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-    }
-
-    private func jinAppSupportURL() -> URL? {
-        applicationSupportURL()?.appendingPathComponent("Jin", isDirectory: true)
     }
 
     private func speechModelsURL() -> URL? {
@@ -147,7 +134,7 @@ actor StorageSizeCalculator {
         }
 
         // For the database category, only count SwiftData files in Application Support
-        if url == applicationSupportURL() {
+        if url == (try? AppDataLocations.databaseDirectoryURL(fileManager: fileManager)) {
             return swiftDataFileSize(in: url)
         }
 
