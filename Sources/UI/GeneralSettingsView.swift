@@ -9,7 +9,7 @@ struct HideWindowToolbarCompatModifier: ViewModifier {
         // Apply the AppKit toolbar hider on all supported macOS versions.
         // NavigationSplitView can recreate an empty toolbar, which introduces
         // a top inset and desynchronizes sidebar/detail heights.
-        content.modifier(HideWindowToolbarModifier())
+        content.modifier(WindowChromeObserverModifier())
     }
 }
 
@@ -17,18 +17,28 @@ extension View {
     func hideWindowToolbarCompat() -> some View {
         modifier(HideWindowToolbarCompatModifier())
     }
+
+    @ViewBuilder
+    func mainWindowToolbarChromeCompat() -> some View {
+        if #available(macOS 15.0, *) {
+            self
+                .toolbar(removing: .title)
+                .hideWindowToolbarCompat()
+        } else {
+            self.hideWindowToolbarCompat()
+        }
+    }
 }
 
-struct HideWindowToolbarModifier: ViewModifier {
+private struct WindowChromeObserverModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .background(WindowToolbarHider())
+            .background(WindowChromeObserverView())
     }
 
-    private struct WindowToolbarHider: NSViewRepresentable {
+    private struct WindowChromeObserverView: NSViewRepresentable {
         func makeNSView(context: Context) -> NSView {
-            let view = ToolbarObservingView()
-            return view
+            ToolbarObservingView()
         }
         func updateNSView(_ nsView: NSView, context: Context) {}
     }
@@ -38,9 +48,24 @@ struct HideWindowToolbarModifier: ViewModifier {
         private var toolbarObservation: NSKeyValueObservation?
         private var fullscreenObservers: [NSObjectProtocol] = []
 
+        override init(frame frameRect: NSRect) {
+            super.init(frame: frameRect)
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             installObserversForCurrentWindowIfNeeded()
+        }
+
+        override func layout() {
+            super.layout()
+            guard let window else { return }
+            applyWindowChrome(for: window)
         }
 
         deinit {
@@ -52,23 +77,23 @@ struct HideWindowToolbarModifier: ViewModifier {
         private func installObserversForCurrentWindowIfNeeded() {
             guard let window else { return }
             guard observedWindow !== window else {
-                hideToolbar()
+                applyConfiguredWindowChrome()
                 return
             }
 
             toolbarObservation?.invalidate()
             observedWindow = window
-            hideToolbar(for: window)
+            applyWindowChrome(for: window)
 
             // NavigationSplitView can recreate a default toolbar during state
             // updates. Remove it immediately to avoid visible top-area jumps.
             toolbarObservation = window.observe(\.toolbar, options: [.new]) { [weak self] observedWindow, _ in
                 guard let self else { return }
-                self.hideToolbar(for: observedWindow)
+                self.applyWindowChrome(for: observedWindow)
                 // AppKit may reapply toolbar/titlebar traits in the next cycle.
                 DispatchQueue.main.async { [weak self, weak observedWindow] in
                     guard let self, let observedWindow else { return }
-                    self.hideToolbar(for: observedWindow)
+                    self.applyWindowChrome(for: observedWindow)
                 }
             }
 
@@ -87,11 +112,11 @@ struct HideWindowToolbarModifier: ViewModifier {
                     return
                 }
 
-                self.hideToolbar(for: observedWindow)
+                self.applyWindowChrome(for: observedWindow)
                 // AppKit may re-apply fullscreen title bar traits after this notification.
                 DispatchQueue.main.async { [weak self, weak observedWindow] in
                     guard let self, let observedWindow else { return }
-                    self.hideToolbar(for: observedWindow)
+                    self.applyWindowChrome(for: observedWindow)
                 }
             }
 
@@ -103,13 +128,13 @@ struct HideWindowToolbarModifier: ViewModifier {
             )
         }
 
-        func hideToolbar() {
+        private func applyConfiguredWindowChrome() {
             guard let window else { return }
-            hideToolbar(for: window)
+            applyWindowChrome(for: window)
         }
 
-        private func hideToolbar(for window: NSWindow) {
-            applyWindowChrome(for: window)
+        private func applyWindowChrome(for window: NSWindow) {
+            applyWindowStyle(for: window)
             if window.titleVisibility != .hidden {
                 window.titleVisibility = .hidden
             }
@@ -133,7 +158,7 @@ struct HideWindowToolbarModifier: ViewModifier {
             }
         }
 
-        private func applyWindowChrome(for window: NSWindow) {
+        private func applyWindowStyle(for window: NSWindow) {
             let isFullScreen = window.styleMask.contains(.fullScreen)
             if isFullScreen {
                 // Keep fullscreen top chrome opaque so sidebar separators do not bleed into the drop-down bar.
