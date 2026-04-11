@@ -60,6 +60,7 @@ struct ContentView: View {
     @AppStorage("assistantSidebarShowName") var assistantSidebarShowName = true
     @AppStorage("assistantSidebarShowIcon") var assistantSidebarShowIcon = true
     @AppStorage("assistantSidebarGridColumns") var assistantSidebarGridColumns = 3
+    @AppStorage("mainSidebarWidth") private var persistedSidebarWidth = 280.0
     @AppStorage(AppPreferenceKeys.newChatModelMode) var newChatModelMode: NewChatModelMode = .lastUsed
     @AppStorage(AppPreferenceKeys.newChatFixedProviderID) var newChatFixedProviderID = "openai"
     @AppStorage(AppPreferenceKeys.newChatFixedModelID) var newChatFixedModelID = "gpt-5.2"
@@ -75,18 +76,24 @@ struct ContentView: View {
         isSidebarSearchFieldFocused || !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private var resolvedSidebarWidth: CGFloat {
+        CGFloat(min(max(persistedSidebarWidth, 240), 340))
+    }
+
     var body: some View {
-        Group {
-            if isSidebarVisible {
-                HSplitView {
-                    sidebarPane
-                    detailContent
-                        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-                }
-            } else {
-                detailContent
-                    .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-            }
+        HSplitView {
+            sidebarPane
+                .frame(
+                    minWidth: isSidebarVisible ? 240 : 0,
+                    idealWidth: isSidebarVisible ? resolvedSidebarWidth : 0,
+                    maxWidth: isSidebarVisible ? 340 : 0,
+                    maxHeight: .infinity
+                )
+                .opacity(isSidebarVisible ? 1 : 0)
+                .allowsHitTesting(isSidebarVisible)
+
+            detailContent
+                .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
         }
         .mainWindowToolbarChromeCompat()
         .task {
@@ -154,7 +161,20 @@ struct ContentView: View {
 
     private var sidebarPane: some View {
         sidebarContent
-            .frame(minWidth: 240, idealWidth: 280, maxWidth: 340, maxHeight: .infinity)
+            .background(sidebarWidthReader)
+        .onPreferenceChange(SidebarWidthPreferenceKey.self) { width in
+            guard isSidebarVisible else { return }
+            let clamped = min(max(width, 240), 340)
+            guard abs(clamped - persistedSidebarWidth) > 0.5 else { return }
+            persistedSidebarWidth = clamped
+        }
+    }
+
+    private var sidebarWidthReader: some View {
+        GeometryReader { proxy in
+            Color.clear
+                .preference(key: SidebarWidthPreferenceKey.self, value: proxy.size.width)
+        }
     }
 
     private var sidebarContent: some View {
@@ -395,5 +415,13 @@ struct ContentView: View {
         }
         .padding(.horizontal, JinSpacing.xLarge)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct SidebarWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 280
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
