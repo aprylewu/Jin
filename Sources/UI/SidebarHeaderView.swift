@@ -10,12 +10,12 @@ struct SidebarHeaderView: View {
         HStack(spacing: JinSpacing.small) {
             VStack(alignment: .leading, spacing: 1) {
                 Text("Chats")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.primary)
 
                 Text(assistantDisplayName)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.tertiary)
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 
@@ -45,8 +45,8 @@ struct SidebarHeaderView: View {
             .help("Settings")
         }
         .padding(.horizontal, JinSpacing.medium)
-        .padding(.top, JinSpacing.small)
-        .padding(.bottom, JinSpacing.xSmall + 1)
-        .frame(minHeight: 34)
+        .padding(.top, JinSpacing.large)
+        .padding(.bottom, JinSpacing.small)
+        .frame(minHeight: 44)
     }
 }

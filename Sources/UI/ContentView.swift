@@ -158,61 +158,86 @@ struct ContentView: View {
     }
 
     private var sidebarContent: some View {
-        List(selection: conversationListSelectionBinding) {
-            sidebarChromeRows
-            assistantsSection
-            chatsSection
+        VStack(spacing: 0) {
+            sidebarPinnedChrome
+
+            List(selection: conversationListSelectionBinding) {
+                assistantsSection
+                chatsSection
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .listStyle(.plain)
+            .contentMargins(.vertical, 0, for: .scrollContent)
+            .overlayScrollerStyle()
+            .scrollContentBackground(.hidden)
         }
-        .listStyle(.plain)
-        .contentMargins(.vertical, 0, for: .scrollContent)
-        .overlayScrollerStyle()
-        .scrollContentBackground(.hidden)
         .background {
             JinSemanticColor.sidebarSurface.ignoresSafeArea()
         }
     }
 
-    @ViewBuilder
-    private var sidebarChromeRows: some View {
-        SidebarHeaderView(
-            assistantDisplayName: selectedAssistant?.displayName ?? "Default",
-            onNewChat: createNewConversation,
-            onHideSidebar: toggleSidebarVisibility,
-            shortcutsStore: shortcutsStore
-        )
-        .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 0, trailing: 12))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
+    private var sidebarPinnedChrome: some View {
+        VStack(spacing: 0) {
+            SidebarHeaderView(
+                assistantDisplayName: selectedAssistant?.displayName ?? "Default",
+                onNewChat: createNewConversation,
+                onHideSidebar: toggleSidebarVisibility,
+                shortcutsStore: shortcutsStore
+            )
 
+            sidebarSearchField
+        }
+        .padding(.bottom, JinSpacing.small)
+        .background(JinSemanticColor.sidebarSurface)
+        .overlay(alignment: .bottom) {
+            LinearGradient(
+                colors: [
+                    JinSemanticColor.separator.opacity(0.08),
+                    .clear
+                ],
+                startPoint: .bottom,
+                endPoint: .top
+            )
+            .frame(height: 10)
+            .allowsHitTesting(false)
+        }
+    }
+
+    private var sidebarSearchField: some View {
         HStack(spacing: JinSpacing.xSmall) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(.secondary)
 
             TextField(text: $searchText, prompt: Text("Search chats")) {
                 EmptyView()
             }
             .textFieldStyle(.plain)
+            .font(.system(size: 15))
             .focused($isSidebarSearchFieldFocused)
             .accessibilityLabel("Search chats")
         }
-        .padding(.horizontal, JinSpacing.small + 2)
-        .padding(.vertical, JinSpacing.small - 1)
+        .padding(.horizontal, JinSpacing.medium)
+        .padding(.vertical, JinSpacing.small + 2)
         .background(
-            RoundedRectangle(cornerRadius: JinRadius.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
                 .fill(
                     sidebarSearchFieldIsActive
-                        ? JinSemanticColor.subtleSurfaceStrong
-                        : JinSemanticColor.subtleSurface.opacity(0.78)
+                        ? JinSemanticColor.surface
+                        : JinSemanticColor.surface.opacity(0.9)
                 )
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .stroke(
+                    sidebarSearchFieldIsActive
+                        ? JinSemanticColor.separator.opacity(0.28)
+                        : JinSemanticColor.separator.opacity(0.16),
+                    lineWidth: JinStrokeWidth.hairline
+                )
+        }
         .padding(.horizontal, JinSpacing.medium)
-        .padding(.top, JinSpacing.xSmall)
-        .padding(.bottom, JinSpacing.small - 1)
         .animation(.easeInOut(duration: 0.12), value: sidebarSearchFieldIsActive)
-        .listRowInsets(.init())
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
     }
 
     // MARK: - Detail

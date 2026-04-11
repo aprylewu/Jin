@@ -112,15 +112,10 @@ extension ContentView {
             .listRowInsets(.init())
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(JinSemanticColor.separator.opacity(0.45))
-                    .frame(height: JinStrokeWidth.hairline)
-            }
         } header: {
             HStack {
                 Text("Assistants")
-                    .font(.caption)
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
                 Menu {
@@ -166,7 +161,10 @@ extension ContentView {
                 .menuIndicator(.hidden)
                 .help("Assistant view options")
             }
+            .padding(.top, JinSpacing.xSmall)
+            .padding(.bottom, JinSpacing.xSmall + 1)
         }
+        .textCase(nil)
         .onDeleteCommand {
             guard let selectedAssistant else { return }
             requestDeleteAssistant(selectedAssistant)
@@ -177,7 +175,7 @@ extension ContentView {
     var chatsSection: some View {
         if !filteredConversations.isEmpty {
             ForEach(groupedConversations, id: \.key) { period, convs in
-                Section(period) {
+                Section {
                     ForEach(convs) { conversation in
                         SidebarConversationItem(
                             conversation: conversation,
@@ -191,11 +189,20 @@ extension ContentView {
                             onRegenerateTitle: { Task { await regenerateConversationTitle(conversation) } },
                             onDelete: { requestDeleteConversation(conversation) }
                         )
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                     }
                     .onDelete { indexSet in
                         deleteConversations(at: indexSet, in: convs)
                     }
+                } header: {
+                    Text(period)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.top, JinSpacing.medium)
+                        .padding(.bottom, JinSpacing.xSmall + 1)
                 }
+                .textCase(nil)
             }
         } else if !searchText.isEmpty {
             ContentUnavailableView.search(text: searchText)
