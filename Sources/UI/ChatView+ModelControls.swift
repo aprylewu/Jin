@@ -36,6 +36,71 @@ extension ChatView {
         showingCodexSessionSettingsSheet = true
     }
 
+    func openClaudeManagedAgentSessionSettingsEditor() {
+        let providerDefaults = providers.first(where: { $0.id == conversationEntity.providerID })
+        claudeManagedProviderDefaultAgentID = providerDefaults?.claudeManagedDefaultAgentID ?? ""
+        claudeManagedProviderDefaultEnvironmentID = providerDefaults?.claudeManagedDefaultEnvironmentID ?? ""
+        claudeManagedProviderDefaultAgentDisplayName = providerDefaults?.claudeManagedDefaultAgentDisplayName ?? ""
+        claudeManagedProviderDefaultEnvironmentDisplayName = providerDefaults?.claudeManagedDefaultEnvironmentDisplayName ?? ""
+
+        claudeManagedAgentIDDraft = controls.claudeManagedAgentID ?? claudeManagedProviderDefaultAgentID
+        claudeManagedEnvironmentIDDraft = controls.claudeManagedEnvironmentID ?? claudeManagedProviderDefaultEnvironmentID
+        claudeManagedAgentDisplayNameDraft = resolvedClaudeManagedAgentDisplayName(
+            for: conversationEntity.providerID,
+            threadModelID: conversationEntity.modelID,
+            threadControls: controls
+        )
+        claudeManagedEnvironmentDisplayNameDraft = resolvedClaudeManagedEnvironmentDisplayName(
+            for: conversationEntity.providerID,
+            threadControls: controls
+        ) ?? claudeManagedProviderDefaultEnvironmentDisplayName
+        claudeManagedAgentSettingsDraftError = nil
+        showingClaudeManagedAgentSessionSettingsSheet = true
+        Task { await refreshClaudeManagedAgentSessionResources() }
+    }
+
+    @MainActor
+    func applyClaudeManagedAgentSelection(_ descriptor: ClaudeManagedAgentDescriptor) {
+        guard providerType == .claudeManagedAgents else { return }
+
+        let currentResolvedControls = resolvedClaudeManagedControls(
+            for: conversationEntity.providerID,
+            threadControls: controls
+        )
+        var updatedControls = controls
+        updatedControls.claudeManagedAgentID = descriptor.id
+        updatedControls.claudeManagedAgentDisplayName = descriptor.name
+        updatedControls.claudeManagedAgentModelID = descriptor.modelID
+        updatedControls.claudeManagedAgentModelDisplayName = descriptor.modelDisplayName
+
+        let updatedResolvedControls = resolvedClaudeManagedControls(
+            for: conversationEntity.providerID,
+            threadControls: updatedControls
+        )
+
+        if activeModelThread != nil,
+           (updatedResolvedControls.claudeManagedAgentID != currentResolvedControls.claudeManagedAgentID
+               || updatedResolvedControls.claudeManagedEnvironmentID != currentResolvedControls.claudeManagedEnvironmentID) {
+            updatedControls.clearClaudeManagedAgentSessionState()
+            if let activeModelThread {
+                clearClaudeManagedAgentSessionPersistence(for: activeModelThread)
+            }
+        }
+
+        controls = updatedControls
+
+        if let activeModelThread,
+           providerType(forProviderID: activeModelThread.providerID) == .claudeManagedAgents {
+            activeModelThread.modelID = managedAgentSyntheticModelID(
+                providerID: activeModelThread.providerID,
+                controls: updatedResolvedControls
+            )
+            synchronizeLegacyConversationModelFields(with: activeModelThread)
+        }
+
+        persistControlsToConversation()
+    }
+
     func pickCodexWorkingDirectory() {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
@@ -69,6 +134,106 @@ extension ChatView {
             showingCodexSessionSettingsSheet = false
         case .failure(let error):
             codexWorkingDirectoryDraftError = error.localizedDescription
+        }
+    }
+
+    func applyClaudeManagedAgentSessionSettingsDraft() {
+        switch ChatEditorDraftSupport.applyClaudeManagedAgentSessionSettingsDraft(
+            agentIDDraft: claudeManagedAgentIDDraft,
+            environmentIDDraft: claudeManagedEnvironmentIDDraft,
+            agentDisplayNameDraft: claudeManagedAgentDisplayNameDraft,
+            environmentDisplayNameDraft: claudeManagedEnvironmentDisplayNameDraft,
+            controls: controls
+        ) {
+        case .success(let updatedControls):
+            let currentResolvedControls = resolvedClaudeManagedControls(
+                for: conversationEntity.providerID,
+                threadControls: controls
+            )
+            var resolvedControls = updatedControls
+            let updatedResolvedControls = resolvedClaudeManagedControls(
+                for: conversationEntity.providerID,
+                threadControls: updatedControls
+            )
+            if activeModelThread != nil,
+               (updatedResolvedControls.claudeManagedAgentID != currentResolvedControls.claudeManagedAgentID
+                   || updatedResolvedControls.claudeManagedEnvironmentID != currentResolvedControls.claudeManagedEnvironmentID) {
+                resolvedControls.clearClaudeManagedAgentSessionState()
+                if let activeModelThread {
+                    clearClaudeManagedAgentSessionPersistence(for: activeModelThread)
+                }
+            }
+            controls = resolvedControls
+            if let activeModelThread,
+               providerType(forProviderID: activeModelThread.providerID) == .claudeManagedAgents {
+                let syntheticModelID = managedAgentSyntheticModelID(
+                    providerID: activeModelThread.providerID,
+                    controls: resolvedClaudeManagedControls(
+                        for: activeModelThread.providerID,
+                        threadControls: resolvedControls
+                    )
+                )
+                activeModelThread.modelID = syntheticModelID
+                synchronizeLegacyConversationModelFields(with: activeModelThread)
+            }
+            persistControlsToConversation()
+            claudeManagedAgentSettingsDraftError = nil
+            showingClaudeManagedAgentSessionSettingsSheet = false
+        case .failure(let error):
+            claudeManagedAgentSettingsDraftError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func refreshClaudeManagedAgentSessionResources(force: Bool = false) async {
+        guard providerType == .claudeManagedAgents else { return }
+        guard !isRefreshingClaudeManagedSessionResources else { return }
+
+        guard let providerEntity = providers.first(where: { $0.id == conversationEntity.providerID }),
+              let config = try? providerEntity.toDomain(),
+              let adapter = try? await ProviderManager().createAdapter(for: config) as? ClaudeManagedAgentsAdapter else {
+            if force {
+                claudeManagedAgentSettingsDraftError = "Failed to initialize Claude Managed Agents provider."
+            }
+            return
+        }
+
+        let apiKey = config.apiKey?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !apiKey.isEmpty else {
+            if force {
+                claudeManagedAgentSettingsDraftError = "Enter an Anthropic API key in provider settings first."
+            }
+            return
+        }
+
+        isRefreshingClaudeManagedSessionResources = true
+        defer { isRefreshingClaudeManagedSessionResources = false }
+
+        do {
+            async let agents = adapter.listAgents()
+            async let environments = adapter.listEnvironments()
+
+            claudeManagedAvailableAgents = try await agents.sorted {
+                $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            }
+            claudeManagedAvailableEnvironments = try await environments.sorted {
+                $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            }
+
+            if claudeManagedAgentDisplayNameDraft.isEmpty,
+               let selected = claudeManagedAvailableAgents.first(where: { $0.id == claudeManagedAgentIDDraft }) {
+                claudeManagedAgentDisplayNameDraft = selected.name
+            }
+            if claudeManagedEnvironmentDisplayNameDraft.isEmpty,
+               let selected = claudeManagedAvailableEnvironments.first(where: { $0.id == claudeManagedEnvironmentIDDraft }) {
+                claudeManagedEnvironmentDisplayNameDraft = selected.name
+            }
+
+            claudeManagedAgentSettingsDraftError = nil
+        } catch {
+            if force || (claudeManagedAvailableAgents.isEmpty && claudeManagedAvailableEnvironments.isEmpty) {
+                claudeManagedAgentSettingsDraftError = error.localizedDescription
+            }
         }
     }
 

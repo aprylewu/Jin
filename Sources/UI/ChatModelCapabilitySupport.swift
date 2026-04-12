@@ -1,6 +1,38 @@
 import Foundation
 
 enum ChatModelCapabilitySupport {
+    static func resolvedClaudeManagedAgentModelInfo(
+        threadModelID: String,
+        providerEntity: ProviderConfigEntity?,
+        threadControls: GenerationControls?
+    ) -> ModelInfo? {
+        var controls = threadControls ?? GenerationControls()
+        providerEntity?.applyClaudeManagedDefaults(into: &controls)
+
+        let remoteModelID = ClaudeManagedAgentRuntime.resolvedRuntimeModelID(
+            threadModelID: threadModelID,
+            controls: controls
+        )
+
+        if let remoteModel = ModelCatalog.seededModels(for: .anthropic).first(where: { $0.id == remoteModelID }) {
+            return ModelInfo(
+                id: remoteModelID,
+                name: controls.claudeManagedAgentModelDisplayName
+                    ?? controls.claudeManagedAgentDisplayName
+                    ?? remoteModel.name,
+                capabilities: remoteModel.capabilities,
+                contextWindow: remoteModel.contextWindow,
+                maxOutputTokens: remoteModel.maxOutputTokens,
+                reasoningConfig: remoteModel.reasoningConfig,
+                overrides: remoteModel.overrides,
+                catalogMetadata: remoteModel.catalogMetadata,
+                isEnabled: true
+            )
+        }
+
+        return providerEntity?.selectableModels.first(where: { $0.id == threadModelID })
+    }
+
     static func resolvedModelInfo(
         modelID: String,
         providerEntity: ProviderConfigEntity?,
@@ -142,7 +174,7 @@ enum ChatModelCapabilitySupport {
         case .gemini, .vertexai:
             return geminiImageGenerationModelIDs.contains(lowerModelID)
         case .codexAppServer, .githubCopilot, .openaiCompatible, .cloudflareAIGateway, .vercelAIGateway,
-             .openrouter, .groq, .cohere, .mistral, .deepinfra, .together, .anthropic, .perplexity,
+             .openrouter, .groq, .cohere, .mistral, .deepinfra, .together, .anthropic, .claudeManagedAgents, .perplexity,
              .deepseek, .zhipuCodingPlan, .minimax, .minimaxCodingPlan, .fireworks, .cerebras, .sambanova, .morphllm, .opencodeGo, .none:
             return false
         }
@@ -174,7 +206,7 @@ enum ChatModelCapabilitySupport {
         guard let providerType else { return false }
 
         switch providerType {
-        case .openai, .openaiWebSocket, .anthropic, .perplexity, .xai, .gemini, .vertexai:
+        case .openai, .openaiWebSocket, .anthropic, .claudeManagedAgents, .perplexity, .xai, .gemini, .vertexai:
             break
         case .codexAppServer, .githubCopilot, .openaiCompatible, .cloudflareAIGateway, .vercelAIGateway, .openrouter, .groq,
              .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan, .minimax, .minimaxCodingPlan,
@@ -243,7 +275,7 @@ enum ChatModelCapabilitySupport {
             return compatibleAudioInputModelIDs.contains(lowerModelID)
         case .fireworks:
             return fireworksAudioInputModelIDs.contains(lowerModelID)
-        case .anthropic, .perplexity, .groq, .cohere, .xai, .deepseek, .zhipuCodingPlan, .minimax, .minimaxCodingPlan,
+        case .anthropic, .claudeManagedAgents, .perplexity, .groq, .cohere, .xai, .deepseek, .zhipuCodingPlan, .minimax, .minimaxCodingPlan,
              .cerebras, .sambanova, .codexAppServer, .morphllm, .opencodeGo, .none:
             return false
         }

@@ -90,6 +90,7 @@ extension ChatView {
             toolResultsByCallID: singleThreadRenderContext.toolResultsByCallID,
             messageEntitiesByID: singleThreadRenderContext.messageEntitiesByID,
             assistantDisplayName: assistantDisplayName,
+            providerType: providerType,
             providerIconID: currentProviderIconID,
             composerHeight: composerHeight,
             isStreaming: isStreaming,
@@ -132,6 +133,9 @@ extension ChatView {
             interaction: messageInteractionContext,
             modelNameForThread: { thread in
                 modelName(id: thread.modelID, providerID: thread.providerID)
+            },
+            providerTypeForThread: { thread in
+                providerType(forProviderID: thread.providerID)
             },
             providerIconIDForProviderID: { providerID in
                 providerIconID(for: providerID)
@@ -315,6 +319,7 @@ extension ChatView {
             onNewChat: onNewChat,
             currentProviderIconID: currentProviderIconID,
             currentModelName: currentModelName,
+            modelPickerHelpText: providerType == .claudeManagedAgents ? "Select managed agent or model" : "Select model",
             toolbarThreads: headerToolbarThreads,
             isModelPickerPresented: $isModelPickerPresented,
             isAddModelPickerPresented: $isAddModelPickerPresented,
@@ -337,12 +342,12 @@ extension ChatView {
                 removeModelThread(thread)
             }
         ) {
-            modelPickerPopoverContent { providerID, modelID in
+            modelPickerPopoverContent(includeManagedAgentSelection: true) { providerID, modelID in
                 setProviderAndModel(providerID: providerID, modelID: modelID)
                 isModelPickerPresented = false
             }
         } addModelPopover: {
-            modelPickerPopoverContent { providerID, modelID in
+            modelPickerPopoverContent(includeManagedAgentSelection: false) { providerID, modelID in
                 addOrActivateThread(providerID: providerID, modelID: modelID)
                 isAddModelPickerPresented = false
             }
@@ -365,13 +370,47 @@ extension ChatView {
         )
     }
 
-    func modelPickerPopoverContent(onSelect: @escaping (String, String) -> Void) -> some View {
+    func modelPickerPopoverContent(
+        includeManagedAgentSelection: Bool,
+        onSelect: @escaping (String, String) -> Void
+    ) -> some View {
         ModelPickerPopover(
             favoritesStore: favoriteModelsStore,
             providers: providers,
             selectedProviderID: conversationEntity.providerID,
             selectedModelID: conversationEntity.modelID,
+            managedAgentContext: includeManagedAgentSelection ? currentManagedAgentPickerContext : nil,
             onSelect: onSelect
+        )
+    }
+
+    var currentManagedAgentPickerContext: ModelPickerPopover.ManagedAgentContext? {
+        guard providerType == .claudeManagedAgents,
+              let currentProvider else { return nil }
+
+        let resolvedControls = resolvedClaudeManagedControls(
+            for: conversationEntity.providerID,
+            threadControls: controls
+        )
+
+        return ModelPickerPopover.ManagedAgentContext(
+            provider: currentProvider,
+            selectedAgentID: resolvedControls.claudeManagedAgentID,
+            availableAgents: resolvedClaudeManagedAgentOptions(
+                for: conversationEntity.providerID,
+                threadControls: controls
+            ),
+            isRefreshing: isRefreshingClaudeManagedSessionResources,
+            onRefresh: {
+                Task { await refreshClaudeManagedAgentSessionResources() }
+            },
+            onOpenSettings: {
+                openClaudeManagedAgentSessionSettingsEditor()
+            },
+            onSelectAgent: { descriptor in
+                applyClaudeManagedAgentSelection(descriptor)
+                isModelPickerPresented = false
+            }
         )
     }
 }

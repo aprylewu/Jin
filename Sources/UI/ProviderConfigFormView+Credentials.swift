@@ -106,7 +106,7 @@ extension ProviderConfigFormView {
             case .githubCopilot:
                 apiKey = provider.apiKey ?? ""
             case .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .vercelAIGateway, .openrouter,
-                 .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai,
+                 .anthropic, .claudeManagedAgents, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai,
                  .deepseek, .zhipuCodingPlan, .minimax, .minimaxCodingPlan, .fireworks, .cerebras, .sambanova, .morphllm, .opencodeGo, .gemini:
                 apiKey = provider.apiKey ?? ""
             case .vertexai:
@@ -169,11 +169,13 @@ extension ProviderConfigFormView {
             }
 
         case .githubCopilot, .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .vercelAIGateway, .openrouter,
-             .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek,
+             .anthropic, .claudeManagedAgents, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek,
              .zhipuCodingPlan, .minimax, .minimaxCodingPlan, .fireworks, .cerebras, .sambanova, .morphllm, .opencodeGo, .gemini:
             let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
             await MainActor.run {
-                provider.apiKeyKeychainID = nil
+                if ProviderType(rawValue: provider.typeRaw) != .claudeManagedAgents {
+                    provider.apiKeyKeychainID = nil
+                }
                 provider.apiKey = key.isEmpty ? nil : key
                 provider.serviceAccountJSON = nil
                 try? modelContext.save()
@@ -205,7 +207,7 @@ extension ProviderConfigFormView {
         case .codexAppServer:
             return !codexCanUseCurrentAuthenticationMode || testStatus == .testing || codexAuthStatus == .working
         case .githubCopilot, .openai, .openaiWebSocket, .openaiCompatible, .cloudflareAIGateway, .vercelAIGateway, .openrouter,
-             .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek,
+             .anthropic, .claudeManagedAgents, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together, .xai, .deepseek,
              .zhipuCodingPlan, .minimax, .minimaxCodingPlan, .fireworks, .cerebras, .sambanova, .morphllm, .opencodeGo, .gemini:
             return apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || testStatus == .testing
         case .vertexai:

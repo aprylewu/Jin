@@ -8,11 +8,24 @@ extension ChatView {
     // MARK: - Model Info
 
     var selectedModelInfo: ModelInfo? {
+        if providerType == .claudeManagedAgents {
+            let threadControls = activeModelThread.flatMap(storedGenerationControls(for:))
+            if let model = ChatModelCapabilitySupport.resolvedClaudeManagedAgentModelInfo(
+                threadModelID: conversationEntity.modelID,
+                providerEntity: currentProvider,
+                threadControls: threadControls
+            ) {
+                return ChatModelCapabilitySupport.normalizedSelectedModelInfo(
+                    model,
+                    providerType: providerType
+                )
+            }
+        }
+
         guard let model = ChatModelCapabilitySupport.resolvedModelInfo(
             modelID: conversationEntity.modelID,
             providerEntity: currentProvider,
-            providerType: providerType,
-            availableModels: currentProvider?.allModels
+            providerType: providerType
         ) else {
             return nil
         }
@@ -52,7 +65,18 @@ extension ChatView {
         providerType: ProviderType?,
         availableModels: [ModelInfo]? = nil
     ) -> String {
-        ChatModelCapabilitySupport.effectiveModelID(
+        if providerType == .claudeManagedAgents {
+            let threadControls = activeModelThread.flatMap(storedGenerationControls(for:))
+            let resolvedControls = resolvedClaudeManagedControls(
+                for: providerEntity?.id ?? conversationEntity.providerID,
+                threadControls: threadControls
+            )
+            return ClaudeManagedAgentRuntime.resolvedRuntimeModelID(
+                threadModelID: modelID,
+                controls: resolvedControls
+            )
+        }
+        return ChatModelCapabilitySupport.effectiveModelID(
             modelID: modelID,
             providerEntity: providerEntity,
             providerType: providerType,
@@ -76,6 +100,20 @@ extension ChatView {
     func canonicalModelID(for providerID: String, modelID: String) -> String {
         let providerEntity = providers.first(where: { $0.id == providerID })
         let providerType = providerEntity.flatMap { ProviderType(rawValue: $0.typeRaw) }
+        if providerType == .claudeManagedAgents {
+            let threadControls = sortedModelThreads.first(where: {
+                $0.providerID == providerID && $0.modelID == modelID
+            }).flatMap(storedGenerationControls(for:))
+            return ClaudeManagedAgentResolutionSupport.canonicalManagedThreadModelID(
+                providerID: providerID,
+                requestedModelID: modelID,
+                fallbackControls: controls,
+                storedThreadControls: threadControls,
+                applyProviderDefaults: { candidateControls in
+                    providers.first(where: { $0.id == providerID })?.applyClaudeManagedDefaults(into: &candidateControls)
+                }
+            )
+        }
         return effectiveModelID(
             for: modelID,
             providerEntity: providerEntity,

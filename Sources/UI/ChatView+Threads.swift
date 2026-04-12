@@ -6,7 +6,14 @@ import SwiftData
 extension ChatView {
 
     var currentModelName: String {
-        ChatThreadSupport.currentModelName(
+        if providerType == .claudeManagedAgents {
+            return resolvedClaudeManagedAgentDisplayName(
+                for: conversationEntity.providerID,
+                threadModelID: conversationEntity.modelID,
+                threadControls: controls
+            )
+        }
+        return ChatThreadSupport.currentModelName(
             providerID: conversationEntity.providerID,
             modelID: conversationEntity.modelID,
             providers: providers,
@@ -43,7 +50,18 @@ extension ChatView {
     }
 
     func modelName(id modelID: String, providerID: String) -> String {
-        ChatThreadSupport.modelName(
+        if providerType(forProviderID: providerID) == .claudeManagedAgents {
+            let threadControls = sortedModelThreads.first(where: {
+                $0.providerID == providerID && canonicalModelID(for: providerID, modelID: $0.modelID) == canonicalModelID(for: providerID, modelID: modelID)
+            }).flatMap(storedGenerationControls(for:))
+            return resolvedClaudeManagedAgentDisplayName(
+                for: providerID,
+                threadModelID: modelID,
+                threadControls: threadControls
+            )
+        }
+
+        return ChatThreadSupport.modelName(
             modelID: modelID,
             providerID: providerID,
             providers: providers,
@@ -133,9 +151,20 @@ extension ChatView {
     }
 
     func addOrActivateThread(providerID: String, modelID: String) {
+        let resolvedModelID: String
+        if providerType(forProviderID: providerID) == .claudeManagedAgents,
+           modelID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            resolvedModelID = managedAgentSyntheticModelID(
+                providerID: providerID,
+                controls: defaultClaudeManagedAgentControls(for: providerID)
+            )
+        } else {
+            resolvedModelID = modelID
+        }
+
         ChatThreadSupport.addOrActivateThread(
             providerID: providerID,
-            modelID: modelID,
+            modelID: resolvedModelID,
             conversationEntity: conversationEntity,
             sortedThreads: sortedModelThreads,
             canonicalModelID: { providerID, modelID in
@@ -171,6 +200,9 @@ extension ChatView {
             clearCodexThreadPersistence: { thread in
                 clearCodexThreadPersistence(for: thread)
             },
+            clearClaudeManagedAgentSessionPersistence: { thread in
+                clearClaudeManagedAgentSessionPersistence(for: thread)
+            },
             synchronizeLegacyConversationModelFields: { thread in
                 synchronizeLegacyConversationModelFields(with: thread)
             },
@@ -188,8 +220,14 @@ extension ChatView {
             modelID: modelID,
             activeThread: activeModelThread,
             modelContext: modelContext,
+            providerTypeForProviderID: { providerID in
+                providerType(forProviderID: providerID)
+            },
             canonicalModelID: { providerID, modelID in
                 canonicalModelID(for: providerID, modelID: modelID)
+            },
+            clearClaudeManagedAgentSessionPersistence: { thread in
+                clearClaudeManagedAgentSessionPersistence(for: thread)
             },
             synchronizeLegacyConversationModelFields: { thread in
                 synchronizeLegacyConversationModelFields(with: thread)
@@ -208,6 +246,9 @@ extension ChatView {
             sortedThreads: sortedModelThreads,
             clearCodexThreadPersistence: { thread in
                 clearCodexThreadPersistence(for: thread)
+            },
+            clearClaudeManagedAgentSessionPersistence: { thread in
+                clearClaudeManagedAgentSessionPersistence(for: thread)
             },
             canonicalModelID: { providerID, modelID in
                 canonicalModelID(for: providerID, modelID: modelID)

@@ -180,7 +180,7 @@ extension ContentView {
                     ForEach(convs) { conversation in
                         SidebarConversationItem(
                             conversation: conversation,
-                            subtitle: "\(providerName(for: conversation.providerID)) \u{2022} \(modelName(id: conversation.modelID, providerID: conversation.providerID))",
+                            subtitle: "\(providerName(for: conversation.providerID)) \u{2022} \(modelName(for: conversation))",
                             providerIconID: providerIconID(for: conversation.providerID),
                             searchSnippet: searchSnippet(for: conversation),
                             searchQuery: searchText.trimmingCharacters(in: .whitespacesAndNewlines),

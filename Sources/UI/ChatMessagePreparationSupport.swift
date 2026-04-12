@@ -63,7 +63,7 @@ enum ChatMessagePreparationSupport {
         case .gemini, .vertexai:
             return ChatView.geminiImageGenerationModelIDs.contains(lowerModelID)
         case .codexAppServer, .githubCopilot, .openaiCompatible, .cloudflareAIGateway, .vercelAIGateway,
-             .openrouter, .anthropic, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together,
+             .openrouter, .anthropic, .claudeManagedAgents, .perplexity, .groq, .cohere, .mistral, .deepinfra, .together,
              .deepseek, .zhipuCodingPlan, .minimax, .minimaxCodingPlan, .fireworks, .cerebras, .sambanova, .morphllm, .opencodeGo, .none:
             return false
         }
@@ -90,7 +90,7 @@ enum ChatMessagePreparationSupport {
         guard let providerType else { return false }
 
         switch providerType {
-        case .openai, .openaiWebSocket, .anthropic, .perplexity, .xai, .gemini, .vertexai:
+        case .openai, .openaiWebSocket, .anthropic, .claudeManagedAgents, .perplexity, .xai, .gemini, .vertexai:
             break
         case .codexAppServer, .githubCopilot, .openaiCompatible, .cloudflareAIGateway, .vercelAIGateway, .openrouter, .groq,
              .cohere, .mistral, .deepinfra, .together, .deepseek, .zhipuCodingPlan, .minimax, .minimaxCodingPlan,
@@ -116,17 +116,46 @@ enum ChatMessagePreparationSupport {
     ) throws -> MessagePreparationProfile {
         let providerTypeSnapshot = providerType(forProviderID: thread.providerID, providers: providers)
         let providerEntity = providers.first(where: { $0.id == thread.providerID })
-        let resolvedModelID = ChatModelCapabilitySupport.effectiveModelID(
-            modelID: thread.modelID,
-            providerEntity: providerEntity,
-            providerType: providerTypeSnapshot
-        )
+        let threadControls: GenerationControls
+        do {
+            threadControls = try JSONDecoder().decode(GenerationControls.self, from: thread.modelConfigData)
+        } catch {
+            throw LLMError.decodingError(message: "Failed to load conversation settings: \(error.localizedDescription)")
+        }
+        let resolvedManagedControls: GenerationControls = {
+            guard providerTypeSnapshot == .claudeManagedAgents else { return threadControls }
+            var merged = threadControls
+            providerEntity?.applyClaudeManagedDefaults(into: &merged)
+            return merged
+        }()
+        let resolvedModelID: String
+        if providerTypeSnapshot == .claudeManagedAgents {
+            resolvedModelID = ClaudeManagedAgentRuntime.resolvedRuntimeModelID(
+                threadModelID: thread.modelID,
+                controls: resolvedManagedControls
+            )
+        } else {
+            resolvedModelID = ChatModelCapabilitySupport.effectiveModelID(
+                modelID: thread.modelID,
+                providerEntity: providerEntity,
+                providerType: providerTypeSnapshot
+            )
+        }
         let lowerModelID = resolvedModelID.lowercased()
-        let modelInfo = ChatModelCapabilitySupport.resolvedModelInfo(
-            modelID: thread.modelID,
-            providerEntity: providerEntity,
-            providerType: providerTypeSnapshot
-        )
+        let modelInfo: ModelInfo? = {
+            if providerTypeSnapshot == .claudeManagedAgents {
+                return ChatModelCapabilitySupport.resolvedClaudeManagedAgentModelInfo(
+                    threadModelID: thread.modelID,
+                    providerEntity: providerEntity,
+                    threadControls: threadControls
+                )
+            }
+            return ChatModelCapabilitySupport.resolvedModelInfo(
+                modelID: thread.modelID,
+                providerEntity: providerEntity,
+                providerType: providerTypeSnapshot
+            )
+        }()
         let normalizedModelInfoSnapshot = modelInfo.map {
             ChatModelCapabilitySupport.normalizedSelectedModelInfo($0, providerType: providerTypeSnapshot)
         }
@@ -148,21 +177,18 @@ enum ChatMessagePreparationSupport {
         let supportsVision = (resolvedModelSettings?.capabilities.contains(.vision) == true)
             || supportsImageGen
             || supportsVideoGen
-        let threadControls: GenerationControls
-        do {
-            threadControls = try JSONDecoder().decode(GenerationControls.self, from: thread.modelConfigData)
-        } catch {
-            throw LLMError.decodingError(message: "Failed to load conversation settings: \(error.localizedDescription)")
-        }
         let pdfMode = ChatModelCapabilitySupport.resolvedPDFProcessingMode(
-            controls: threadControls,
+            controls: resolvedManagedControls,
             supportsNativePDF: nativePDFSupported,
             defaultPDFProcessingFallbackMode: defaultPDFProcessingFallbackMode,
             mistralOCRPluginEnabled: mistralOCRPluginEnabled,
             mineruOCRPluginEnabled: mineruOCRPluginEnabled,
             deepSeekOCRPluginEnabled: deepSeekOCRPluginEnabled
         )
-        let modelName = modelInfo?.name ?? resolvedModelID
+        let modelName = modelInfo?.name
+            ?? (providerTypeSnapshot == .claudeManagedAgents
+                ? ClaudeManagedAgentRuntime.resolvedDisplayName(threadModelID: thread.modelID, controls: resolvedManagedControls)
+                : resolvedModelID)
 
         return MessagePreparationProfile(
             threadID: thread.id,

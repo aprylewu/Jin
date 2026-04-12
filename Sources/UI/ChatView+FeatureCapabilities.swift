@@ -98,6 +98,7 @@ extension ChatView {
     }
 
     var supportsReasoningControl: Bool {
+        guard !ManagedAgentUIVisibilitySupport.hidesInternalUI(providerType: providerType) else { return false }
         guard let config = selectedReasoningConfig else { return false }
         return config.type != .none
     }
@@ -119,13 +120,14 @@ extension ChatView {
         case .perplexity:
             return controls.webSearch?.enabled ?? true
         case .openai, .openaiWebSocket, .codexAppServer, .githubCopilot, .openaiCompatible, .cloudflareAIGateway, .vercelAIGateway,
-             .openrouter, .anthropic, .groq, .cohere, .mistral, .deepinfra, .together, .xai,
+             .openrouter, .anthropic, .claudeManagedAgents, .groq, .cohere, .mistral, .deepinfra, .together, .xai,
              .deepseek, .zhipuCodingPlan, .minimax, .minimaxCodingPlan, .fireworks, .cerebras, .sambanova, .gemini, .vertexai, .morphllm, .opencodeGo, .none:
             return controls.webSearch?.enabled == true
         }
     }
 
     var supportsNativeWebSearchControl: Bool {
+        guard !ManagedAgentUIVisibilitySupport.hidesInternalUI(providerType: providerType) else { return false }
         guard providerType != .codexAppServer else { return false }
 
         if supportsMediaGenerationControl {
@@ -146,6 +148,7 @@ extension ChatView {
     }
 
     var modelSupportsBuiltinSearchPluginControl: Bool {
+        guard !ManagedAgentUIVisibilitySupport.hidesInternalUI(providerType: providerType) else { return false }
         guard providerType != .codexAppServer else { return false }
         guard !supportsMediaGenerationControl else { return false }
         guard resolvedModelSettings?.capabilities.contains(.toolCalling) == true else { return false }
@@ -317,6 +320,7 @@ extension ChatView {
     }
 
     var supportsMCPToolsControl: Bool {
+        guard !ManagedAgentUIVisibilitySupport.hidesInternalUI(providerType: providerType) else { return false }
         guard providerType != .codexAppServer else { return false }
         guard !supportsMediaGenerationControl else { return false }
         return resolvedModelSettings?.capabilities.contains(.toolCalling) == true

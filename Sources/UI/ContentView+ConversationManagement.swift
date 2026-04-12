@@ -82,6 +82,11 @@ extension ContentView {
         var controls = inheritedControls ?? GenerationControls()
         controls.codexResumeThreadID = nil
         controls.codexPendingRollbackTurns = 0
+        controls.clearClaudeManagedAgentSessionState()
+        if let provider = providers.first(where: { $0.id == providerID }),
+           ProviderType(rawValue: provider.typeRaw) == .claudeManagedAgents {
+            provider.applyClaudeManagedDefaults(into: &controls)
+        }
         switch newChatMCPMode {
         case .lastUsed:
             break
@@ -332,8 +337,40 @@ extension ContentView {
         providers.first(where: { $0.id == providerID })?.resolvedProviderIconID
     }
 
+    func modelName(for conversation: ConversationEntity) -> String {
+        guard let provider = providers.first(where: { $0.id == conversation.providerID }) else {
+            return conversation.modelID
+        }
+
+        if ProviderType(rawValue: provider.typeRaw) == .claudeManagedAgents {
+            let storedControls = try? JSONDecoder().decode(GenerationControls.self, from: conversation.modelConfigData)
+            return ClaudeManagedAgentResolutionSupport.resolvedConversationDisplayName(
+                threadModelID: conversation.modelID,
+                storedControls: storedControls,
+                applyProviderDefaults: { controls in
+                    provider.applyClaudeManagedDefaults(into: &controls)
+                }
+            )
+        }
+
+        return provider.allModels.first(where: { $0.id == conversation.modelID })?.name ?? conversation.modelID
+    }
+
     func modelName(id modelID: String, providerID: String) -> String {
-        providers.first(where: { $0.id == providerID })?.allModels.first(where: { $0.id == modelID })?.name ?? modelID
+        guard let provider = providers.first(where: { $0.id == providerID }) else {
+            return modelID
+        }
+
+        if ProviderType(rawValue: provider.typeRaw) == .claudeManagedAgents {
+            var controls = GenerationControls()
+            provider.applyClaudeManagedDefaults(into: &controls)
+            return ClaudeManagedAgentRuntime.resolvedDisplayName(
+                threadModelID: modelID,
+                controls: controls
+            )
+        }
+
+        return provider.allModels.first(where: { $0.id == modelID })?.name ?? modelID
     }
 
     func requestRenameSelectedConversation() {
@@ -357,10 +394,20 @@ extension ContentView {
         guard let provider = providers.first(where: { $0.id == providerID }) else {
             return []
         }
-        return provider.enabledModels
+        return provider.selectableModels
     }
 
     func defaultModelID(for providerID: String) -> String {
+        if let provider = providers.first(where: { $0.id == providerID }),
+           ProviderType(rawValue: provider.typeRaw) == .claudeManagedAgents {
+            return provider.selectableModels.first?.id
+                ?? ClaudeManagedAgentRuntime.syntheticThreadModelID(
+                    providerID: providerID,
+                    agentID: provider.claudeManagedDefaultAgentID,
+                    environmentID: provider.claudeManagedDefaultEnvironmentID
+                )
+        }
+
         let models = modelsForProvider(providerID)
         guard !models.isEmpty else {
             switch providerID {
