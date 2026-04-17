@@ -266,6 +266,10 @@ actor AnthropicAdapter: LLMProviderAdapter {
         AnthropicModelLimits.supportsMaxEffort(for: modelID)
     }
 
+    private func supportsSamplingParameters(_ modelID: String) -> Bool {
+        AnthropicModelLimits.supportsSamplingParameters(for: modelID)
+    }
+
     private func supportsWebSearch(_ modelID: String) -> Bool {
         modelSupportsWebSearch(providerConfig: providerConfig, modelID: modelID)
     }
@@ -282,7 +286,13 @@ actor AnthropicAdapter: LLMProviderAdapter {
     }
 
     private func mapAnthropicEffort(_ effort: ReasoningEffort, modelID: String) -> String {
-        switch effort {
+        let normalized = ModelCapabilityRegistry.normalizedReasoningEffort(
+            effort,
+            for: .anthropic,
+            modelID: modelID
+        )
+
+        switch normalized {
         case .none:
             return "high"
         case .minimal, .low:
@@ -292,6 +302,8 @@ actor AnthropicAdapter: LLMProviderAdapter {
         case .high:
             return "high"
         case .xhigh:
+            return "xhigh"
+        case .max:
             return supportsMaxEffort(modelID) ? "max" : "high"
         }
     }
@@ -444,6 +456,20 @@ actor AnthropicAdapter: LLMProviderAdapter {
         body["output_config"] = merged
     }
 
+    private func appendSamplingControls(
+        to body: inout [String: Any],
+        controls: GenerationControls,
+        modelID: String
+    ) {
+        guard supportsSamplingParameters(modelID) else { return }
+        if let temperature = controls.temperature {
+            body["temperature"] = temperature
+        }
+        if let topP = controls.topP {
+            body["top_p"] = topP
+        }
+    }
+
     private func buildRequest(
         messages: [Message],
         modelID: String,
@@ -541,22 +567,22 @@ actor AnthropicAdapter: LLMProviderAdapter {
 
     private func appendThinkingConfig(to body: inout [String: Any], controls: GenerationControls, modelID: String) {
         let thinkingEnabled = controls.reasoning?.enabled == true
-        let providerSpecificHasThinking = controls.providerSpecific["thinking"] != nil
+        let providerSpecificThinking = AnthropicThinkingConfigSupport.providerSpecificThinkingDictionary(
+            from: controls.providerSpecific["thinking"]?.value
+        )
 
         if !thinkingEnabled {
-            if let temperature = controls.temperature {
-                body["temperature"] = temperature
-            }
-            if let topP = controls.topP {
-                body["top_p"] = topP
-            }
+            appendSamplingControls(to: &body, controls: controls, modelID: modelID)
             return
         }
 
-        if !providerSpecificHasThinking {
+        if providerSpecificThinking == nil {
             if supportsAdaptiveThinking(modelID) {
-                // 4.6 models: always adaptive. budget_tokens is deprecated.
-                body["thinking"] = ["type": "adaptive"]
+                body["thinking"] = AnthropicThinkingConfigSupport.normalizedThinkingConfiguration(
+                    ["type": "adaptive"],
+                    reasoning: controls.reasoning,
+                    modelID: modelID
+                )
             } else {
                 body["thinking"] = [
                     "type": "enabled",
@@ -652,8 +678,26 @@ actor AnthropicAdapter: LLMProviderAdapter {
                 continue
             }
 
+            if (key == "temperature" || key == "top_p" || key == "top_k")
+                && !supportsSamplingParameters(modelID) {
+                continue
+            }
+
             if key == "tools" {
                 body[key] = normalizeAnthropicProviderSpecificTools(value.value, modelID: modelID)
+                continue
+            }
+
+            if key == "thinking" {
+                guard controls.reasoning?.enabled == true,
+                      let dict = AnthropicThinkingConfigSupport.providerSpecificThinkingDictionary(from: value.value) else {
+                    continue
+                }
+                body[key] = AnthropicThinkingConfigSupport.normalizedThinkingConfiguration(
+                    dict,
+                    reasoning: controls.reasoning,
+                    modelID: modelID
+                )
                 continue
             }
 

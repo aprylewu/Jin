@@ -181,6 +181,40 @@ enum ChatControlNormalizationSupport {
         }
     }
 
+    static func normalizeAnthropicProviderSpecific(
+        controls: inout GenerationControls,
+        providerType: ProviderType?,
+        modelID: String
+    ) {
+        guard providerType == .anthropic else { return }
+
+        if !AnthropicModelLimits.supportsSamplingParameters(for: modelID) {
+            controls.providerSpecific.removeValue(forKey: "temperature")
+            controls.providerSpecific.removeValue(forKey: "top_p")
+            controls.providerSpecific.removeValue(forKey: "top_k")
+        }
+
+        guard controls.reasoning?.enabled == true else {
+            controls.providerSpecific.removeValue(forKey: "thinking")
+            return
+        }
+
+        guard let thinking = AnthropicThinkingConfigSupport.providerSpecificThinkingDictionary(
+            from: controls.providerSpecific["thinking"]?.value
+        ) else {
+            controls.providerSpecific.removeValue(forKey: "thinking")
+            return
+        }
+
+        controls.providerSpecific["thinking"] = AnyCodable(
+            AnthropicThinkingConfigSupport.normalizedThinkingConfiguration(
+                thinking,
+                reasoning: controls.reasoning,
+                modelID: modelID
+            )
+        )
+    }
+
     static func normalizeCodexProviderSpecific(
         controls: inout GenerationControls,
         providerType: ProviderType?

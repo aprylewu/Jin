@@ -134,6 +134,8 @@ struct ChatView: View {
     @State var showingThinkingBudgetSheet = false
     @State var thinkingBudgetDraft = ""
     @State var maxTokensDraft = ""
+    // swiftlint:disable:next private_swiftui_state
+    @State var anthropicThinkingDisplayDraft: AnthropicThinkingDisplay = .summarized
     @State var showingCodeExecutionSheet = false
     @State var codeExecutionDraft = CodeExecutionControls()
     @State var codeExecutionDraftError: String?
@@ -357,9 +359,11 @@ struct ChatView: View {
                 usesEffortMode: anthropicUsesEffortMode,
                 modelID: conversationEntity.modelID,
                 modelMaxOutputTokens: AnthropicModelLimits.maxOutputTokens(for: conversationEntity.modelID),
-                supportsMaxEffort: AnthropicModelLimits.supportsMaxEffort(for: conversationEntity.modelID),
+                supportedEffortLevels: availableReasoningEffortLevels,
                 thinkingBudgetDraft: $thinkingBudgetDraft,
                 maxTokensDraft: $maxTokensDraft,
+                supportsThinkingDisplayControl: supportsAnthropicThinkingDisplayControl,
+                thinkingDisplaySelection: $anthropicThinkingDisplayDraft,
                 effortSelection: anthropicEffortBinding,
                 isValid: isThinkingBudgetDraftValid,
                 validationWarning: thinkingBudgetValidationWarning,

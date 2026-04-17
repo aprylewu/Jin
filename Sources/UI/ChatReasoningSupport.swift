@@ -11,6 +11,22 @@ enum ChatReasoningSupport {
         return AnthropicModelLimits.supportsEffort(for: modelID)
     }
 
+    static func supportsAnthropicThinkingDisplayControl(providerType: ProviderType?, modelID: String) -> Bool {
+        guard providerType == .anthropic else { return false }
+        return AnthropicModelLimits.requiresExplicitThinkingDisplay(for: modelID)
+    }
+
+    static func resolvedAnthropicThinkingDisplay(
+        currentDisplay: AnthropicThinkingDisplay?,
+        providerType: ProviderType?,
+        modelID: String
+    ) -> AnthropicThinkingDisplay {
+        guard supportsAnthropicThinkingDisplayControl(providerType: providerType, modelID: modelID) else {
+            return .summarized
+        }
+        return currentDisplay ?? .summarized
+    }
+
     static func updateReasoning(
         controls: inout GenerationControls,
         mutate: (inout ReasoningControls) -> Void
@@ -140,7 +156,7 @@ enum ChatReasoningSupport {
         switch value {
         case .none, .minimal:
             return .low
-        case .low, .medium, .high, .xhigh:
+        case .low, .medium, .high, .xhigh, .max:
             return value
         }
     }
@@ -176,14 +192,24 @@ enum ChatReasoningSupport {
         modelID: String,
         anthropicUsesAdaptiveThinking: Bool,
         anthropicUsesEffortMode: Bool,
+        anthropicThinkingDisplay: AnthropicThinkingDisplay?,
         budgetTokens: Int?,
         maxTokens: Int?,
         defaultEffort: ReasoningEffort,
         defaultBudget: Int
     ) -> String? {
-        guard providerType != .anthropic || maxTokens != nil else { return nil }
+        let resolvedRequestedMaxTokens: Int?
+        if providerType == .anthropic {
+            resolvedRequestedMaxTokens = maxTokens ?? AnthropicModelLimits.resolvedMaxTokens(
+                requested: controls.maxTokens,
+                for: modelID,
+                fallback: 4096
+            )
+        } else {
+            resolvedRequestedMaxTokens = maxTokens
+        }
 
-        controls.maxTokens = maxTokens
+        controls.maxTokens = resolvedRequestedMaxTokens
 
         if anthropicUsesAdaptiveThinking {
             normalizeAnthropicReasoningAndMaxTokens(
@@ -216,6 +242,12 @@ enum ChatReasoningSupport {
                 defaultEffort: defaultEffort,
                 defaultBudget: defaultBudget
             )
+        }
+
+        if providerType == .anthropic {
+            updateReasoning(controls: &controls) { reasoning in
+                reasoning.anthropicThinkingDisplay = anthropicThinkingDisplay
+            }
         }
 
         guard providerType == .anthropic else { return nil }

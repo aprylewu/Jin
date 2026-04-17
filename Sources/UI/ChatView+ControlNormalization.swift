@@ -302,6 +302,13 @@ extension ChatView {
         )
     }
 
+    var supportsAnthropicThinkingDisplayControl: Bool {
+        ChatReasoningSupport.supportsAnthropicThinkingDisplayControl(
+            providerType: providerType,
+            modelID: conversationEntity.modelID
+        )
+    }
+
     var anthropicEffortBinding: Binding<ReasoningEffort> {
         Binding(
             get: {
@@ -338,7 +345,8 @@ extension ChatView {
             providerType: providerType,
             modelID: conversationEntity.modelID,
             thinkingBudgetDraft: thinkingBudgetDraft,
-            maxTokensDraft: maxTokensDraft
+            maxTokensDraft: maxTokensDraft,
+            currentMaxTokens: controls.maxTokens
         )
     }
 
@@ -348,7 +356,8 @@ extension ChatView {
             anthropicUsesAdaptiveThinking: anthropicUsesAdaptiveThinking,
             modelID: conversationEntity.modelID,
             thinkingBudgetDraft: thinkingBudgetDraft,
-            maxTokensDraft: maxTokensDraft
+            maxTokensDraft: maxTokensDraft,
+            currentMaxTokens: controls.maxTokens
         )
     }
 
@@ -363,6 +372,11 @@ extension ChatView {
         )
         thinkingBudgetDraft = prepared.thinkingBudgetDraft
         maxTokensDraft = prepared.maxTokensDraft
+        anthropicThinkingDisplayDraft = ChatReasoningSupport.resolvedAnthropicThinkingDisplay(
+            currentDisplay: controls.reasoning?.anthropicThinkingDisplay,
+            providerType: providerType,
+            modelID: conversationEntity.modelID
+        )
         showingThinkingBudgetSheet = true
     }
 
@@ -373,6 +387,7 @@ extension ChatView {
             modelID: conversationEntity.modelID,
             anthropicUsesAdaptiveThinking: anthropicUsesAdaptiveThinking,
             anthropicUsesEffortMode: anthropicUsesEffortMode,
+            anthropicThinkingDisplay: supportsAnthropicThinkingDisplayControl ? anthropicThinkingDisplayDraft : nil,
             budgetTokens: thinkingBudgetDraftInt,
             maxTokens: maxTokensDraftInt,
             defaultEffort: selectedReasoningConfig?.defaultEffort ?? .high,
@@ -435,6 +450,7 @@ extension ChatView {
         normalizeReasoningEffortLimits()
         normalizeVertexAIGenerationConfig()
         normalizeFireworksProviderSpecific()
+        normalizeAnthropicProviderSpecific()
         normalizeCodexProviderSpecific()
         normalizeClaudeManagedAgentProviderSpecific()
         normalizeOpenAIServiceTierControls()
@@ -572,6 +588,14 @@ extension ChatView {
             providerType: providerType,
             isMiniMaxM2FamilyModel: isFireworksMiniMaxM2FamilyModel(conversationEntity.modelID),
             fireworksReasoningHistoryOptions: fireworksReasoningHistoryOptions
+        )
+    }
+
+    func normalizeAnthropicProviderSpecific() {
+        ChatControlNormalizationSupport.normalizeAnthropicProviderSpecific(
+            controls: &controls,
+            providerType: providerType,
+            modelID: conversationEntity.modelID
         )
     }
 
